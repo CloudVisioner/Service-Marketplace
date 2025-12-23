@@ -1,6 +1,6 @@
 import { Query, Resolver } from '@nestjs/graphql';
 
-@Resolver()
+@Resolver() // controller of graphQL
 export class AppResolver {
     @Query(() => String)
     public sayHello(): string {
