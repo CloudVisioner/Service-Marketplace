@@ -12,12 +12,12 @@ import { DatabaseModule } from './database/database.module';
   imports: [ConfigModule.forRoot(), GraphQLModule.forRoot({
     driver: ApolloDriver,
     playground: true,
-    uploads: false,
+    uploads: false, // for receiving images, multipart/form-data is ON.
     autoSchemaFile: true,
 
   }), ComponentsModule, DatabaseModule, 
 ],
-  controllers: [AppController],
+  controllers: [AppController], // For REST API
   providers: [AppService, AppResolver],
 })
 export class AppModule {}
