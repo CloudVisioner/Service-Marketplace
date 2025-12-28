@@ -8,7 +8,7 @@ import { AppResolver } from './app.resolver';
 import { ComponentsModule } from './components/components.module';
 import { DatabaseModule } from './database/database.module';
 
-@Module({
+@Module({ // INTEGRATION
   imports: [ConfigModule.forRoot(), GraphQLModule.forRoot({ 
     driver: ApolloDriver,
     playground: true,
@@ -21,3 +21,6 @@ import { DatabaseModule } from './database/database.module';
   providers: [AppService, AppResolver],
 })
 export class AppModule {}
+
+// imports is the mechanism that connects (injectsm) the modules to AppModule
+// @Module provideas the properties to AppModule {}.
