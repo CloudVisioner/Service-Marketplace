@@ -10,7 +10,7 @@ import { Connection } from 'mongoose';
 			}),
 		}),
 	],
-	exports: [],
+	exports: [MongooseModule],
 })
 export class DatabaseModule {
 	constructor(@InjectConnection() private readonly connection: Connection) {
