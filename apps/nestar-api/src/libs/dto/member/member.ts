@@ -7,8 +7,10 @@ export class Member {
 	@Field(() => String)
 	_id: ObjectId;
 
-	@Field(() => MemberType)
-	memberType: MemberType;
+
+
+	@Field(() => MemberType,)
+	memberType: MemberType; 
 
 	@Field(() => MemberStatus)
 	memberStatus: MemberStatus;
@@ -22,7 +24,7 @@ export class Member {
 	@Field(() => String)
 	memberNick: string;
 
-	meberPassword: string;
+	memberPassword?: string;
 
 	@Field(() => String, { nullable: true })
 	memberFullName?: string;
