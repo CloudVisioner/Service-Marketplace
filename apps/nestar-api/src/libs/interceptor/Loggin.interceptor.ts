@@ -8,7 +8,7 @@ import { tap } from 'rxjs/operators';
 export class LoggingInterceptor implements NestInterceptor {
 	private readonly logger: Logger = new Logger();
 
-	public intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+	public intercept(context: ExecutionContext, next: CallHandler): Observable<any> { // functional programming
 		const recordTime = Date.now();
 		const requestType = context.getType<GqlContextType>();
 
@@ -16,14 +16,14 @@ export class LoggingInterceptor implements NestInterceptor {
 			// Develop if needed !
 		} else if (requestType === 'graphql') {
 			/** (1) Print Request */
-			const gqlContext = GqlExecutionContext.create(context);
-			this.logger.log(`${this.stringify(gqlContext.getContext().req.body)}`, 'REQUEST');
+			const gqlContext = GqlExecutionContext.create(context); // to understand graphQL
+			this.logger.log(`${this.stringify(gqlContext.getContext().req.body)}`, 'REQUEST'); // extract graphQL query from http req
 
 			/** (2) Errors handling via GraphQL */
 			/** (3) No Errors, giving Response below */
 			return next.handle().pipe(
-				tap((context) => {
-					const responseTime = Date.now() - recordTime;
+				tap((context) => { // logging, no modification
+					const responseTime = Date.now() - recordTime; // record time taken for operation
 					this.logger.log(`${this.stringify(context)} - ${responseTime}ms \n\n`, 'REQUEST');
 				}),
 			);
