@@ -1,3 +1,19 @@
+function areParenthesesBalanced(str) {
+  let balance = 0;
+
+  for (const char of str) {
+    if (char === '(') balance++;
+    if (char === ')') balance--;
+
+    // Agar yopuvchi qavs oldin kelib qolsa
+    if (balance < 0) return false;
+  }
+
+  // Oxirida balans nol bo‘lishi kerak
+  return balance === 0;
+}
+console.log(areParenthesesBalanced("string()ichida(qavslar)soni()balansda"))
+
 // TASK ZJ:
 
 // Shunday function yozing, u berilgan array ichidagi
