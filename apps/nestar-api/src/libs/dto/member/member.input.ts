@@ -1,6 +1,6 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsIn, IsNotEmpty, IsOptional, Length, Min } from 'class-validator';
-import { MemberAuthType, MemberType } from '../../enums/member.enum';
+import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
 import { availableAgentSorts } from '../../config';
 import { Direction } from '../../enums/common.enum';
 
@@ -44,7 +44,7 @@ export class LoginInput {
 
 @InputType()
 class AISearch {
-	@IsNotEmpty()
+	@IsOptional()
 	@Field(() => String, { nullable: true })
 	text?: string;
 }
@@ -74,4 +74,46 @@ export class AgentsInquiry {
 	@IsNotEmpty()
 	@Field(() => AISearch)
 	search: AISearch;
+}
+
+@InputType()
+class MISearch {
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	memberStatus?: MemberStatus;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	memberType?: MemberType;
+
+	@IsNotEmpty()
+	@Field(() => String, { nullable: true })
+	text?: string;
+}
+
+@InputType()
+export class MembersInquiry {
+	@IsNotEmpty()
+	@Min(1)
+	@Field(() => Int)
+	page: number;
+
+	@IsNotEmpty()
+	@Min(1)
+	@Field(() => Int)
+	limit: number;
+
+	@IsOptional()
+	@IsIn(availableAgentSorts)
+	@Field(() => String, { nullable: true })
+	sort?: string;
+
+	@IsOptional()
+	@IsIn(availableAgentSorts)
+	@Field(() => Direction, { nullable: true })
+	direction?: Direction;
+
+	@IsNotEmpty()
+	@Field(() => MISearch)
+	search: MISearch;
 }
