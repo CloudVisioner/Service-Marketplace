@@ -103,7 +103,7 @@ const PropertySchema = new Schema(
 		deletedAt: {
 			type: Date,
 		},
-
+ 
 		constructedAt: {
 			type: Date,
 		},
