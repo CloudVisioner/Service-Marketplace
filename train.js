@@ -1,18 +1,46 @@
-function areParenthesesBalanced(str) {
-  let balance = 0;
+// TASK-ZP:
 
-  for (const char of str) {
-    if (char === '(') balance++;
-    if (char === ')') balance--;
+// Shunday function yozing, u parametridagi string ichidagi raqam va sonlarni sonini sanasin.
+// MASALAN: countNumberAndLetters(“string152%\¥”) return {number:3, letter:6}
 
-    // Agar yopuvchi qavs oldin kelib qolsa
-    if (balance < 0) return false;
-  }
-
-  // Oxirida balans nol bo‘lishi kerak
-  return balance === 0;
+function countNumberAndLetters(string) {
+	let number = 0;
+	let letter = 0;
+	for (let i = 0; i < string.length; i++) {
+		if (string[i] >= '0' && string[i] <= '9') {
+			number++;
+		} else if ((string[i] >= 'A' && string[i] <= 'Z') || (string[i] >= 'a' && string[i] <= 'z')) {
+			letter++;
+		}
+	}
+	return {
+		number: number,
+		letter: letter,
+	};
 }
-console.log(areParenthesesBalanced("string()ichida(qavslar)soni()balansda"))
+
+console.log(countNumberAndLetters('dfjh2h4huffu7f3@@@@'));
+
+// TASK-ZP:
+
+// Shunday function yozing, u parametridagi string ichidagi raqam va sonlarni sonini sanasin.
+// MASALAN: countNumberAndLetters(“string152%\¥”) return {number:3, letter:6}
+
+// function areParenthesesBalanced(str) {
+//   let balance = 0;
+
+//   for (const char of str) {
+//     if (char === '(') balance++;
+//     if (char === ')') balance--;
+
+//     // Agar yopuvchi qavs oldin kelib qolsa
+//     if (balance < 0) return false;
+//   }
+
+//   // Oxirida balans nol bo‘lishi kerak
+//   return balance === 0;
+// }
+// console.log(areParenthesesBalanced("string()ichida(qavslar)soni()balansda"))
 
 // TASK ZJ:
 
@@ -24,17 +52,15 @@ console.log(areParenthesesBalanced("string()ichida(qavslar)soni()balansda"))
 // Yuqoridagi misolda, array nested bo'lgan holdatda ham,
 // bizning function ularning yig'indisini hisoblab qaytarmoqda.
 
-let arr = [1, [1, 2]]
+// let arr = [1, [1, 2]]
 
-function reduceNestedArray(arr) {
-    const sum = arr.flat(Infinity).reduce((accumulator, currentVal) => {
-        return accumulator + currentVal
-    }, 0)
-    return sum
-    }
-console.log(reduceNestedArray(arr))
-
-
+// function reduceNestedArray(arr) {
+//     const sum = arr.flat(Infinity).reduce((accumulator, currentVal) => {
+//         return accumulator + currentVal
+//     }, 0)
+//     return sum
+//     }
+// console.log(reduceNestedArray(arr))
 
 // TASK ZI
 
@@ -49,4 +75,3 @@ console.log(reduceNestedArray(arr))
 //     }, 3000)
 // }
 // delayedHelloWorld();
-
