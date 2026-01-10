@@ -22,11 +22,11 @@ export class MemberInput {
 
 	@IsOptional()
 	@Field(() => MemberType, { nullable: true }) // might bee null
-	memberType: MemberType;
+	memberType?: MemberType;
 
 	@IsOptional()
 	@Field(() => MemberAuthType, { nullable: true }) // might bee null, graphQL visibility, for having a property
-	memberAuthType: MemberAuthType;
+	memberAuthType?: MemberAuthType;
 }
 
 @InputType()

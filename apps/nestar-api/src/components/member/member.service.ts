@@ -17,7 +17,7 @@ export class MemberService {
 	constructor(
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
 		private authService: AuthService,
-		private viewSerivice: ViewService,
+		private viewService: ViewService,
 	) {}
 	public async signup(input: MemberInput): Promise<Member> {
 		// TODO: Hash password
@@ -50,7 +50,7 @@ export class MemberService {
 		console.log(typeof input.memberPassword); // Should be 'string'
 		console.log(typeof response.memberPassword); // Should be 'string'
 		// TODO: Compare passwords
-		const isMatch = await this.authService.comparePasswords(input.memberPassword, response.memberPassword);
+		const isMatch = await this.authService.comparePassword(input.memberPassword, response.memberPassword);
 		if (!isMatch) throw new InternalServerErrorException(Message.WRONG_PASSWORD);
 
 		response.accessToken = await this.authService.createToken(response);
@@ -86,7 +86,7 @@ export class MemberService {
 
 		if (memberId) {
 			const viewInput = { memberId: memberId, viewRefId: targetId, viewGroup: ViewGroup.MEMBER };
-			const newView = await this.viewSerivice.recordView(viewInput);
+			const newView = await this.viewService.recordView(viewInput);
 			if (newView) {
 				await this.memberModel.findOneAndUpdate(search, { $inc: { memberViews: 1 } }, { new: true }).exec();
 				targetMember.memberViews++;
