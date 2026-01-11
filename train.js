@@ -1,25 +1,44 @@
+// Shunday function yozing, u parametridagi array ichida 2 marta qaytarilgan sonlarni alohida araryda qaytarsin.
+// MASALAN: findDuplicates([1,2,3,4,5,4,3,4]) return [3, 4]
+
+const list = [1, 2, 3, 4, 5, 4, 3, 4];
+
+function findDuplicates(arr) {
+	let note = [];
+	let list = [];
+	for (let i = 0; i < arr.length; i++) {
+		if (!list.includes(arr[i])) {
+			list.push(arr[i]);
+		} else {
+			note.push(arr[i]);
+		}
+	}
+	return note;
+}
+
+console.log(findDuplicates(list));
 // TASK-ZP:
 
 // Shunday function yozing, u parametridagi string ichidagi raqam va sonlarni sonini sanasin.
 // MASALAN: countNumberAndLetters(“string152%\¥”) return {number:3, letter:6}
 
-function countNumberAndLetters(string) {
-	let number = 0;
-	let letter = 0;
-	for (let i = 0; i < string.length; i++) {
-		if (string[i] >= '0' && string[i] <= '9') {
-			number++;
-		} else if ((string[i] >= 'A' && string[i] <= 'Z') || (string[i] >= 'a' && string[i] <= 'z')) {
-			letter++;
-		}
-	}
-	return {
-		number: number,
-		letter: letter,
-	};
-}
+// function countNumberAndLetters(string) {
+// 	let number = 0;
+// 	let letter = 0;
+// 	for (let i = 0; i < string.length; i++) {
+// 		if (string[i] >= '0' && string[i] <= '9') {
+// 			number++;
+// 		} else if ((string[i] >= 'A' && string[i] <= 'Z') || (string[i] >= 'a' && string[i] <= 'z')) {
+// 			letter++;
+// 		}
+// 	}
+// 	return {
+// 		number: number,
+// 		letter: letter,
+// 	};
+// }
 
-console.log(countNumberAndLetters('dfjh2h4huffu7f3@@@@'));
+// console.log(countNumberAndLetters('dfjh2h4huffu7f3@@@@'));
 
 // TASK-ZP:
 
