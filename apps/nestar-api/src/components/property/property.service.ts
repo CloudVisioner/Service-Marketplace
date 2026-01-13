@@ -121,11 +121,11 @@ export class PropertyService {
 				{
 					$facet: {
 						list: [
-							{ $skip: (input.page - 1) * input.limit },
+							{ $skip: (input.page - 1) * input.limit }, // skip then write
 							{ $limit: input.limit },
 							// meLiked
 							lookupMember,
-							{ $unwind: '$memberData' },
+							{ $unwind: '$memberData' }, // convert arr into obj
 						],
 						metaCounter: [{ $count: 'total' }],
 					},
@@ -178,7 +178,7 @@ export class PropertyService {
 
 		const match: T = {
 			memberId: memberId,
-			propertyStatus: propertyStatus ?? { $ne: PropertyStatus.DELETE },
+			propertyStatus: propertyStatus ?? { $ne: PropertyStatus.DELETE }, // not equal
 		};
 		const sort: T = { [input?.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
 
