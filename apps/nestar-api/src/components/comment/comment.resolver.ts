@@ -9,6 +9,9 @@ import { Comments, Comment as CommentEntity } from '../../libs/dto/comment/comme
 import { CommentUpdate } from '../../libs/dto/comment/comment.update';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { WithoutGuard } from '../auth/guards/without.guard';
+import { MemberType } from '../../libs/enums/member.enum';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 @Resolver()
 export class CommentResolver {
 	constructor(private readonly commentService: CommentService) {}
@@ -36,7 +39,6 @@ export class CommentResolver {
 		return await this.commentService.updateComment(memberId, input);
 	}
 
-
 	@UseGuards(WithoutGuard)
 	@Query((returns) => Comments)
 	public async getComments(
@@ -45,8 +47,18 @@ export class CommentResolver {
 	): Promise<Comments> {
 		console.log('Mutation: updateComment');
 		// Convert the string ID from the input into a Mongo ObjectId
-		input.search.commentRefId = shapeIntoMongoObjectId(input.search.commentRefId );
+		input.search.commentRefId = shapeIntoMongoObjectId(input.search.commentRefId);
 		const result = await this.commentService.getComments(memberId, input);
-        return result;
+		return result;
+	}
+
+	// ** ADMIN ** //
+	@Roles(MemberType.ADMIN)
+	@UseGuards(RolesGuard)
+	@Mutation((returns) => CommentEntity)
+	public async removeCommentByAdmin(@Args('commentId') input: string): Promise<CommentEntity> {
+		console.log('Mutation: removeCommentByAdmin');
+		const commentId = shapeIntoMongoObjectId(input);
+		return await this.commentService.removeCommentByAdmin(commentId);
 	}
 }
