@@ -8,13 +8,14 @@ import { MemberModule } from '../member/member.module';
 import { ViewModule } from '../view/view.module';
 import { PropertyModule } from '../property/property.module';
 
+
 import { BoardArticleModule } from '../board-article/board-article.module';
 
 @Module({
 	imports: [
 		MongooseModule.forFeature([
 			{
-				name: 'Property',
+				name: 'Comment',
 				schema: CommentSchema,
 			},
 		]),

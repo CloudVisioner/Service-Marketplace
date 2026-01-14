@@ -17,9 +17,12 @@ import { ViewService } from '../view/view.service';
 import { PropertyUpdate } from '../../libs/dto/property/property.update';
 import * as moment from 'moment';
 import { lookupMember, shapeIntoMongoObjectId } from '../../libs/config';
+import { CommentStatus } from '../../libs/enums/comment.enum';
+import { CommentUpdate } from '../../libs/dto/comment/comment.update';
 
 @Injectable()
 export class PropertyService {
+	commentModel: any;
 	constructor(
 		@InjectModel('Property') private readonly propertyModel: Model<Property>,
 		private memberService: MemberService,
@@ -273,4 +276,26 @@ export class PropertyService {
 			)
 			.exec();
 	}
+
+	public async updateComment(memberId: ObjectId, input: CommentUpdate): Promise<Comment> {
+  const { _id } = input;
+  
+  const result = await this.commentModel.findOneAndUpdate(
+    {
+      _id: _id,
+      memberId: memberId,
+      commentStatus: CommentStatus.ACTIVE,
+    },
+    input,
+    {
+      new: true, // Returns the updated document instead of the old one
+    },
+  );
+
+  if (!result) {
+    throw new InternalServerErrorException(Message.UPDATE_FAILED);
+  }
+  
+  return result;
+}
 }

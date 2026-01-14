@@ -21,6 +21,6 @@ import { CommentService } from './comment/comment.service';
 		FollowModule,
 		BoardArticleModule,
 	],
-	providers: [CommentResolver, CommentService],
+	providers: [],
 })
 export class ComponentsModule {}
