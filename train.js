@@ -1,22 +1,42 @@
+// TASK ZS:
+
+// Shunday function yozing, bu function parametrdagi array ichida
+// bir marotaba takrorlangan element'ni qaytarsin
+
+// MASALAN: singleNumber([4, 2, 1, 2, 1]); return 4;
+
+const list = [4, 2, 1, 2, 1];
+
+function singleNumber(arr) {
+	let result = 0;
+
+	for(let num of arr) {
+		result ^= num; // __ for single function
+	}
+	return result;
+}
+
+console.log(singleNumber(list));
+
 // Shunday function yozing, u parametridagi array ichida 2 marta qaytarilgan sonlarni alohida araryda qaytarsin.
 // MASALAN: findDuplicates([1,2,3,4,5,4,3,4]) return [3, 4]
 
-const list = [1, 2, 3, 4, 5, 4, 3, 4];
+// const list = [1, 2, 3, 4, 5, 4, 3, 4];
 
-function findDuplicates(arr) {
-	let note = [];
-	let list = [];
-	for (let i = 0; i < arr.length; i++) {
-		if (!list.includes(arr[i])) {
-			list.push(arr[i]);
-		} else {
-			note.push(arr[i]);
-		}
-	}
-	return note;
-}
+// function findDuplicates(arr) {
+// 	let note = [];
+// 	let list = [];
+// 	for (let i = 0; i < arr.length; i++) {
+// 		if (!list.includes(arr[i])) {
+// 			list.push(arr[i]);
+// 		} else {
+// 			note.push(arr[i]);
+// 		}
+// 	}
+// 	return note;
+// }
 
-console.log(findDuplicates(list));
+// console.log(findDuplicates(list));
 // TASK-ZP:
 
 // Shunday function yozing, u parametridagi string ichidagi raqam va sonlarni sonini sanasin.
