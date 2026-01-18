@@ -16,9 +16,7 @@ import { StatisticModifier, T } from '../../libs/types/common';
 import { ViewService } from '../view/view.service';
 import { PropertyUpdate } from '../../libs/dto/property/property.update';
 import * as moment from 'moment';
-import { lookupMember, shapeIntoMongoObjectId } from '../../libs/config';
-import { CommentStatus } from '../../libs/enums/comment.enum';
-import { CommentUpdate } from '../../libs/dto/comment/comment.update';
+import { lookupAuthMemberLiked, lookupMember, shapeIntoMongoObjectId } from '../../libs/config';
 import { LikeService } from '../like/like.service';
 import { LikeInput } from '../../libs/dto/like/like.input';
 import { LikeGroup } from '../../libs/enums/like.enum';
@@ -118,7 +116,7 @@ export class PropertyService {
 						list: [
 							{ $skip: (input.page - 1) * input.limit }, // skip then write
 							{ $limit: input.limit },
-							// meLiked
+							lookupAuthMemberLiked(memberId),
 							lookupMember,
 							{ $unwind: '$memberData' }, // convert arr into obj
 						],

@@ -4,14 +4,14 @@ import { ObjectId } from 'mongoose';
 
 @ObjectType()
 export class MeLiked {
-	@Field(() => String)
-	memberId: ObjectId;
+  @Field(() => String, { nullable: true })
+  memberId?: ObjectId;
 
-	@Field(() => String)
-	likeRefId: ObjectId;
+  @Field(() => String, { nullable: true })
+  likeRefId?: ObjectId;
 
-	@Field(() => Boolean)
-	myFavorite: boolean;
+  @Field(() => Boolean, { nullable: true })
+  myFavorite?: boolean;
 }
 
 @ObjectType()
