@@ -200,37 +200,50 @@ export class AgentPropertiesInquiry {
 
 @InputType()
 class ALPISearch {
-  @IsOptional()
-  @Field(() => PropertyStatus, { nullable: true })
-  propertyStatus?: PropertyStatus;
+	@IsOptional()
+	@Field(() => PropertyStatus, { nullable: true })
+	propertyStatus?: PropertyStatus;
 
-  @IsOptional()
-  @Field(() => [PropertyLocation], { nullable: true })
-  propertyLocationList?: PropertyLocation[];
+	@IsOptional()
+	@Field(() => [PropertyLocation], { nullable: true })
+	propertyLocationList?: PropertyLocation[];
 }
 
 @InputType()
 export class AllPropertiesInquiry {
-  @IsNotEmpty()
-  @Min(1)
-  @Field(() => Int)
-  page: number;
+	@IsNotEmpty()
+	@Min(1)
+	@Field(() => Int)
+	page: number;
 
-  @IsNotEmpty()
-  @Min(1)
-  @Field(() => Int)
-  limit: number;
+	@IsNotEmpty()
+	@Min(1)
+	@Field(() => Int)
+	limit: number;
 
-  @IsOptional()
-  @IsIn(availablePropertySorts)
-  @Field(() => String, { nullable: true })
-  sort?: string;
+	@IsOptional()
+	@IsIn(availablePropertySorts)
+	@Field(() => String, { nullable: true })
+	sort?: string;
 
-  @IsOptional()
-  @Field(() => Direction, { nullable: true })
-  direction?: Direction;
+	@IsOptional()
+	@Field(() => Direction, { nullable: true })
+	direction?: Direction;
 
-  @IsNotEmpty()
-  @Field(() => ALPISearch)
-  search: ALPISearch;
+	@IsNotEmpty()
+	@Field(() => ALPISearch)
+	search: ALPISearch;
+}
+
+@InputType()
+export class OrdinaryInquiry {
+	@IsNotEmpty()
+	@Min(1)
+	@Field(() => Int)
+	page: number;
+
+	@IsNotEmpty()
+	@Min(1)
+	@Field(() => Int)
+	limit: number;
 }
