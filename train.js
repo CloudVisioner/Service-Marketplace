@@ -1,3 +1,22 @@
+// TASK-ZU:
+
+// Shunday function yozing, u parametridagi array ichida takrorlanmagan raqamlar yig'indisini qaytarsin.
+// MASALAN: sumOfUnique([1,2,3,2]) return 4
+
+function sumOfUnique(arr) {
+	let sum = 0;
+
+	for (let i = 0; i < arr.length; i++) {
+		if (arr.indexOf(arr[i]) === arr.lastIndexOf(arr[i])) {
+			sum += arr[i];
+		}
+	}
+
+	return sum;
+}
+
+console.log(sumOfUnique([1, 2, 3, 2])); // 4
+
 // TASK ZS:
 
 // Shunday function yozing, bu function parametrdagi array ichida
@@ -5,18 +24,18 @@
 
 // MASALAN: singleNumber([4, 2, 1, 2, 1]); return 4;
 
-const list = [4, 2, 1, 2, 1];
+// const list = [4, 2, 1, 2, 1];
 
-function singleNumber(arr) {
-	let result = 0;
+// function singleNumber(arr) {
+// 	let result = 0;
 
-	for(let num of arr) {
-		result ^= num; // __ for single function
-	}
-	return result;
-}
+// 	for(let num of arr) {
+// 		result ^= num; // __ for single function
+// 	}
+// 	return result;
+// }
 
-console.log(singleNumber(list));
+// console.log(singleNumber(list));
 
 // Shunday function yozing, u parametridagi array ichida 2 marta qaytarilgan sonlarni alohida araryda qaytarsin.
 // MASALAN: findDuplicates([1,2,3,4,5,4,3,4]) return [3, 4]
