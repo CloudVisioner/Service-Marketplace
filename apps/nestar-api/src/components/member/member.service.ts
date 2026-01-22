@@ -68,10 +68,10 @@ export class MemberService {
 			.findOneAndUpdate(
 				{
 					_id: memberId,
-					memberStatus: MemberStatus.ACTIVE,
+					memberStatus: MemberStatus.ACTIVE,// filter
 				},
-				input,
-				{ new: true },
+				input, // projection 
+				{ new: true }, // option
 			)
 			.exec();
 		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
@@ -116,7 +116,7 @@ export class MemberService {
 		const match: T = { memberType: MemberType.AGENT, memberStatus: MemberStatus.ACTIVE };
 		const sort: T = { [input?.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
 
-		if (text) match.memberNick = { $regex: new RegExp(text, 'i') };
+		if (text) match.memberNick = { $regex: new RegExp(text, 'i') }; // case insensitive
 		console.log('match:', match);
 
 		const result = await this.memberModel
@@ -128,7 +128,7 @@ export class MemberService {
 						list: [
 							{ $skip: (input.page - 1) * input.limit },
 							{ $limit: input.limit },
-							lookupAuthMemberLiked(memberId, "$_id"),
+							lookupAuthMemberLiked(memberId, "$_id"), // did req maker like the agents ?
 						],
 						metaCounter: [{ $count: 'total' }],
 					},

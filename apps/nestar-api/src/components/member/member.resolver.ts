@@ -51,7 +51,7 @@ export class MemberResolver {
 	@UseGuards(AuthGuard)
 	@Mutation(() => Member)
 	public async updateMember(
-		@Args('input') input: MemberUpdate,
+		@Args('input') input: MemberUpdate, // id is not allowed to update
 		@AuthMember('_id') memberId: ObjectId,
 	): Promise<Member> {
 		console.log('Mutation: updateMember');
@@ -61,7 +61,7 @@ export class MemberResolver {
 
 	@UseGuards(WithoutGuard)
 	@Query(() => Member)
-	public async getMember(@Args('memberId') input: string, @AuthMember('_id') memberId: ObjectId): Promise<Member> {
+	public async getMember(@Args('memberId') input: string, @AuthMember('_id') memberId: ObjectId): Promise<Member> { // memberId comes as a string
 		console.log('Query: getMember');
 		console.log('memberId:', memberId);
 		const targetId = shapeIntoMongoObjectId(input);

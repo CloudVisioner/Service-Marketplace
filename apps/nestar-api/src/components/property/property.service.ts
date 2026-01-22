@@ -118,7 +118,7 @@ export class PropertyService {
 							{ $skip: (input.page - 1) * input.limit }, // skip then write
 							{ $limit: input.limit },
 							lookupAuthMemberLiked(memberId),
-							lookupMember,
+							lookupMember, // property owner's data
 							{ $unwind: '$memberData' }, // convert arr into obj
 						],
 						metaCounter: [{ $count: 'total' }],
@@ -148,8 +148,8 @@ export class PropertyService {
 			text,
 		} = input.search;
 
-		if (memberId) match.memberId = shapeIntoMongoObjectId(memberId);
-		if (locationList) match.propertyLocation = { $in: locationList };
+		if (memberId) match.memberId = shapeIntoMongoObjectId(memberId); // search 
+		if (locationList) match.propertyLocation = { $in: locationList }; // search
 		if (roomsList) match.propertyRooms = { $in: roomsList };
 		if (bedsList) match.propertyBeds = { $in: bedsList };
 		if (typeList) match.propertyType = { $in: typeList };
@@ -170,7 +170,7 @@ export class PropertyService {
 		return await this.likeService.getFavoriteProperties(memberId, input);
 	}
 
-		public async getVisited(memberId: ObjectId, input: OrdinaryInquiry): Promise<Properties> {
+	public async getVisited(memberId: ObjectId, input: OrdinaryInquiry): Promise<Properties> {
 		return await this.viewService.getVisitedProperties(memberId, input);
 	}
 

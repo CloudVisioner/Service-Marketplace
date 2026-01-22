@@ -51,9 +51,9 @@ export const lookupAuthMemberLiked = (memberId: T, targetRefId: string = '$_id')
 				},
 				{
 					$project: {
-						_id: 0,
+						_id: 0, // no need, user has it already.
 						memberId: 1,
-						liekRefId: 1,
+						likeRefId: 1,
 						myFavorite: '$$localMyFavorite',
 					},
 				},

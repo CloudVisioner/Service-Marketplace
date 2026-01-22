@@ -72,9 +72,9 @@ export class FollowService {
 		return result;
 	}
 
-	public async getMemberFollowings(memberId: ObjectId, input: FollowInquiry): Promise<Followings> {
+	public async getMemberFollowings(memberId: ObjectId, input: FollowInquiry): Promise<Followings> { // this user's followings.
 		const { page, limit, search } = input;
-		if (!search?.followerId) throw new InternalServerErrorException(Message.BAD_REQUEST);
+		if (!search?.followerId) throw new InternalServerErrorException(Message.BAD_REQUEST); // stop if follower id is not provided.
 		const match: T = { followerId: search?.followerId };
 		console.log('match', match);
 

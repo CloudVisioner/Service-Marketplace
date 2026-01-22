@@ -8,6 +8,7 @@ import { AppResolver } from './app.resolver';
 import { ComponentsModule } from './components/components.module';
 import { DatabaseModule } from './database/database.module';
 import { T } from './libs/types/common';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
 	// INTEGRATION
@@ -18,7 +19,7 @@ import { T } from './libs/types/common';
 			playground: true,
 			uploads: false, // for receiving images, multipart/form-data is ON.
 			autoSchemaFile: true,
-			formatError: (error: T) => {
+			formatError: (error: T) => { // customizes, cleans graphQL errors for clients
 				const graphQLFormattedError = {
 					code: error?.extensions.code,
 					message:
@@ -30,11 +31,12 @@ import { T } from './libs/types/common';
 		}),
 		ComponentsModule,
 		DatabaseModule,
+		SocketModule,
 	],
 	controllers: [AppController], // For REST API
-	providers: [AppService, AppResolver],
+	providers: [AppService, AppResolver], // for testing
 })
 export class AppModule {}
 
-// imports is the mechanism that connects (injectsm) the modules to AppModule
+// imports is the mechanism that connects (injects) the modules to AppModule
 // @Module provideas the properties to AppModule {}.
