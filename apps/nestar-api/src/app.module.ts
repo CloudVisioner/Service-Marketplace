@@ -13,7 +13,7 @@ import { SocketModule } from './socket/socket.module';
 @Module({
 	// INTEGRATION
 	imports: [
-		ConfigModule.forRoot(),
+		ConfigModule.forRoot(), // 
 		GraphQLModule.forRoot({
 			driver: ApolloDriver,
 			playground: true,
