@@ -6,11 +6,11 @@ import { ObjectId } from 'mongoose';
 class FollowSearch {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	followingId?: ObjectId;
+	followedOrgId?: ObjectId;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	followerId?: ObjectId;
+	followerUserId?: ObjectId;
 }
 
 @InputType()

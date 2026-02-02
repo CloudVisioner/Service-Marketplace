@@ -2,7 +2,7 @@ import { Args, Mutation, Resolver, Query } from '@nestjs/graphql';
 import { FollowService } from './follow.service';
 import { UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
-import { AuthMember } from '../auth/decorators/authMember.decorator';
+import { AuthUser } from '../auth/decorators/authUser.decorator';
 import { Follower, Followers, Followings } from '../../libs/dto/follow/follow';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { ObjectId } from 'mongoose';
@@ -15,41 +15,45 @@ export class FollowResolver {
 
 	@UseGuards(AuthGuard)
 	@Mutation((returns) => Follower)
-	public async subscribe(@Args('input') input: string, @AuthMember('_id') memberId: ObjectId): Promise<Follower> {
+	public async subscribe(@Args('input') input: string, @AuthUser('_id') userId: ObjectId): Promise<Follower> {
 		console.log('Mutation: subscribe');
 		const followingId = shapeIntoMongoObjectId(input);
-		return await this.followService.subscribe(memberId, followingId);
+		return await this.followService.subscribe(userId, followingId);
 	}
 
 	@UseGuards(AuthGuard)
 	@Mutation((returns) => Follower)
-	public async unsubscribe(@Args('input') input: string, @AuthMember('_id') memberId: ObjectId): Promise<Follower> {
+	public async unsubscribe(@Args('input') input: string, @AuthUser('_id') userId: ObjectId): Promise<Follower> {
 		console.log('Mutation: unsubscribe');
 		const followingId = shapeIntoMongoObjectId(input);
-		return await this.followService.unsubscribe(memberId, followingId);
+		return await this.followService.unsubscribe(userId, followingId);
 	}
 
 	@UseGuards(WithoutGuard)
 	@Query((returns) => Followings)
 	public async getMemberFollowings(
 		@Args('input') input: FollowInquiry,
-		@AuthMember('_id') memberId: ObjectId,
+		@AuthUser('_id') userId: ObjectId,
 	): Promise<Followings> {
 		console.log('Query: getMemberFollowings');
-		const { followerId } = input.search;
-		input.search.followerId = shapeIntoMongoObjectId(followerId);
-		return await this.followService.getMemberFollowings(memberId, input);
+		const { followerUserId } = input.search;
+		if (followerUserId) {
+			input.search.followerUserId = shapeIntoMongoObjectId(followerUserId);
+		}
+		return await this.followService.getMemberFollowings(userId, input);
 	}
 
 		@UseGuards(WithoutGuard)
 	@Query((returns) => Followers)
 	public async getMemberFollowers(
 		@Args('input') input: FollowInquiry,
-		@AuthMember('_id') memberId: ObjectId,
+		@AuthUser('_id') userId: ObjectId,
 	): Promise<Followers> {
 		console.log('Query: getMemberFollowers');
-		const { followingId } = input.search;
-		input.search.followingId = shapeIntoMongoObjectId(followingId);
-		return await this.followService.getMemberFollowers(memberId, input);
+		const { followedOrgId } = input.search;
+		if (followedOrgId) {
+			input.search.followedOrgId = shapeIntoMongoObjectId(followedOrgId);
+		}
+		return await this.followService.getMemberFollowers(userId, input);
 	}
 }

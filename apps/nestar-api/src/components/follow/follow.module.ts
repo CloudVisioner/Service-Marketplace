@@ -4,7 +4,7 @@ import { FollowResolver } from './follow.resolver';
 import { FollowService } from './follow.service';
 import FollowSchema from '../../schemas/Follow.model';
 import { AuthModule } from '../auth/auth.module';
-import { MemberModule } from '../member/member.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
     imports: [
@@ -15,7 +15,7 @@ import { MemberModule } from '../member/member.module';
 			},
 		]),
         AuthModule,
-        MemberModule
+        UserModule
     ],
     providers: [FollowResolver, FollowService],
     exports: [FollowService]

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { UserRole, UserStatus } from '../../enums/user.enum';
 import { MeLiked } from '../like/like';
 import { MeFollowed } from '../follow/follow';
+import { TotalCounter } from '../common/common';
 
 @ObjectType()
 export class User {
@@ -44,12 +45,6 @@ export class User {
 
 	@Field(() => [MeFollowed], { nullable: true })
 	meFollowed?: MeFollowed[];
-}
-
-@ObjectType()
-export class TotalCounter {
-	@Field(() => Int, { nullable: true })
-	total?: number;
 }
 
 @ObjectType()

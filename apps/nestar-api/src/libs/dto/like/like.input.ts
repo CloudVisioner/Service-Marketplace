@@ -7,7 +7,7 @@ import { LikeGroup } from '../../enums/like.enum';
 export class LikeInput {
 	@IsNotEmpty()
 	@Field(() => String)
-	memberId: ObjectId;
+	userId: ObjectId;
 
 	@IsNotEmpty()
 	@Field(() => String)

@@ -14,15 +14,15 @@ const ViewSchema = new Schema(
 			required: true,
 		},
 
-		memberId: {
+		userId: {
 			type: Schema.Types.ObjectId,
 			required: true,
-			ref: 'Member',
+			ref: 'User',
 		},
 	},
 	{ timestamps: true, collection: 'views' },
 );
 
-ViewSchema.index({ memberId: 1, viewRefId: 1 }, { unique: true });
+ViewSchema.index({ userId: 1, viewRefId: 1 }, { unique: true });
 
 export default ViewSchema;

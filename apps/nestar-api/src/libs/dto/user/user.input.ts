@@ -1,7 +1,7 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsIn, IsNotEmpty, IsOptional, Length, Min } from 'class-validator';
 import { UserRole, UserStatus } from '../../enums/user.enum';
-import { availableAgentSorts } from '../../config';
+import { availableUserSorts } from '../../config';
 import { Direction } from '../../enums/common.enum';
 
 @InputType()
@@ -39,40 +39,6 @@ export class LoginInput {
 }
 
 @InputType()
-class AISearch {
-	@IsOptional()
-	@Field(() => String, { nullable: true })
-	text?: string;
-}
-
-@InputType()
-export class AgentsInquiry {
-	@IsNotEmpty()
-	@Min(1)
-	@Field(() => Int)
-	page: number;
-
-	@IsNotEmpty()
-	@Min(1)
-	@Field(() => Int)
-	limit: number;
-
-	@IsOptional()
-	@IsIn(availableAgentSorts)
-	@Field(() => String, { nullable: true })
-	sort?: string;
-
-	@IsOptional()
-	@IsIn(availableAgentSorts)
-	@Field(() => Direction, { nullable: true })
-	direction?: Direction;
-
-	@IsNotEmpty()
-	@Field(() => AISearch)
-	search: AISearch;
-}
-
-@InputType()
 class UISearch {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
@@ -100,12 +66,12 @@ export class UsersInquiry {
 	limit: number;
 
 	@IsOptional()
-	@IsIn(availableAgentSorts)
+	@IsIn(availableUserSorts)
 	@Field(() => String, { nullable: true })
 	sort?: string;
 
 	@IsOptional()
-	@IsIn(availableAgentSorts)
+	@IsIn(availableUserSorts)
 	@Field(() => Direction, { nullable: true })
 	direction?: Direction;
 

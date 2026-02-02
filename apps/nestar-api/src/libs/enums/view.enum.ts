@@ -1,9 +1,11 @@
 import { registerEnumType } from '@nestjs/graphql';
 
 export enum ViewGroup {
-	MEMBER = 'MEMBER',
-	ARTICLE = 'ARTICLE',
-	PROPERTY = 'PROPERTY',
+	USER = 'USER',
+	ORGANIZATION = 'ORGANIZATION',
+	SERVICE_REQUEST = 'SERVICE_REQUEST',
+	QUOTE = 'QUOTE',
+	MEMBER = 'MEMBER', // Legacy support
 }
 registerEnumType(ViewGroup, {
 	name: 'ViewGroup',

@@ -105,9 +105,6 @@ const OrganizationSchema = new Schema(
 	{ timestamps: true, collection: 'organizations' },
 );
 
-// Index on _id
-OrganizationSchema.index({ _id: 1 });
-
 // Compound text index for search functionality
 OrganizationSchema.index(
 	{ orgName: 'text', orgDescription: 'text', orgCountry: 'text', orgCity: 'text' },

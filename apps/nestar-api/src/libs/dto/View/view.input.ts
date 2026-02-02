@@ -6,14 +6,14 @@ import { ObjectId } from 'mongoose';
 @InputType()
 export class ViewInput {
 	@IsNotEmpty()
-	@Field(() => ViewGroup)
+	@Field(() => String)
 	viewRefId: ObjectId;
 
 	@IsNotEmpty()
-	@Field(() => ViewGroup)
-	memberId: ObjectId;
+	@Field(() => String)
+	userId: ObjectId;
 
 	@IsNotEmpty()
 	@Field(() => ViewGroup)
-	viewGroup: string;
+	viewGroup: ViewGroup;
 }

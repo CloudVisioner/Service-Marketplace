@@ -25,10 +25,10 @@ const NoticeSchema = new Schema(
 			required: true,
 		},
 		
-		memberId: {
+		userId: {
 			type: Schema.Types.ObjectId,
 			required: true,
-			ref: 'Member',
+			ref: 'User',
 		},
 	},
 	{ timestamps: true, collection: 'notices' },

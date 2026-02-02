@@ -1,5 +1,5 @@
-import { Field, InputType } from '@nestjs/graphql';
-import { IsNotEmpty } from 'class-validator';
+import { Field, InputType, Int } from '@nestjs/graphql';
+import { IsNotEmpty, IsOptional, Min } from 'class-validator';
 import { ServiceRequestStatus } from '../../enums/service-request.enum';
 import { ObjectId } from 'mongoose';
 
@@ -36,8 +36,40 @@ export class ServiceRequestInput {
 	@IsNotEmpty()
 	@Field(() => [String])
 	reqSkillsNeeded: string[];
+}
+
+@InputType()
+class ServiceRequestSearch {
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	reqBuyerOrgId?: ObjectId;
+
+	@IsOptional()
+	@Field(() => ServiceRequestStatus, { nullable: true })
+	reqStatus?: ServiceRequestStatus;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	text?: string;
+}
+
+@InputType()
+export class ServiceRequestInquiry {
+	@IsNotEmpty()
+	@Min(1)
+	@Field(() => Int)
+	page: number;
 
 	@IsNotEmpty()
-	@Field(() => String)
-	reqCreatedByUserId: ObjectId;
+	@Min(1)
+	@Field(() => Int)
+	limit: number;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	sort?: string;
+
+	@IsNotEmpty()
+	@Field(() => ServiceRequestSearch)
+	search: ServiceRequestSearch;
 }

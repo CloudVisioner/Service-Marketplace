@@ -2,19 +2,21 @@ import { Schema } from 'mongoose';
 
 const FollowSchema = new Schema(
 	{
-		followingId: {
+		followedOrgId: {
 			type: Schema.Types.ObjectId,
 			required: true,
+			ref: 'Organization',
 		},
 
-		followerId: {
+		followerUserId: {
 			type: Schema.Types.ObjectId,
 			required: true,
+			ref: 'User',
 		},
 	},
 	{ timestamps: true, collection: "follows"},
 );
 
-FollowSchema.index({ followingId: 1, followerId: 1 }, { unique: true });
+FollowSchema.index({ followedOrgId: 1, followerUserId: 1 }, { unique: true });
 
 export default FollowSchema;

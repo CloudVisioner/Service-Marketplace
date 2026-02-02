@@ -2,6 +2,7 @@ import { Field, Int, ObjectType } from '@nestjs/graphql';
 import mongoose from 'mongoose';
 import { OrganizationType, OrganizationStatus } from '../../enums/organization.enum';
 import { User } from '../user/user';
+import { TotalCounter } from '../common/common';
 
 @ObjectType()
 export class Organization {
@@ -71,12 +72,6 @@ export class Organization {
 	/** from aggregation **/
 	@Field(() => User, { nullable: true })
 	orgOwnerData?: User;
-}
-
-@ObjectType()
-export class TotalCounter {
-	@Field(() => Int, { nullable: true })
-	total?: number;
 }
 
 @ObjectType()

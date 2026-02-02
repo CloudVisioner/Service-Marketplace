@@ -30,26 +30,28 @@ const NotificationSchema = new Schema(
 			type: String,
 		},
 
-		authorId: {
+		senderUserId: {
 			type: Schema.Types.ObjectId,
 			required: true,
-			ref: 'Member',
+			ref: 'User',
 		},
 
-		receiverId: {
+		receiverUserId: {
 			type: Schema.Types.ObjectId,
 			required: true,
-			ref: 'Member',
+			ref: 'User',
 		},
 
-		propertyId: {
+		organizationId: {
 			type: Schema.Types.ObjectId,
-			ref: 'Property',
+			required: true,
+			ref: 'Organization',
 		},
 
-		articleId: {
+		serviceRequestId: {
 			type: Schema.Types.ObjectId,
-			ref: 'BoardArticle',
+			required: true,
+			ref: 'ServiceRequest',
 		},
 	},
 	{ timestamps: true, collection: 'notifications' },

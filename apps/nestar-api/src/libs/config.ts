@@ -1,21 +1,6 @@
 import { ObjectId } from 'bson';
 
-export const availableAgentSorts = ['createdAt', 'updatedAt', 'memberLikes', 'memberViews', 'memberRank'];
-export const availableMemberSorts = ['createdAt', 'updatedAt', 'memberLikes', 'memberViews'];
-
-export const availableOptions = ['property', 'propertyRent'];
-export const availablePropertySorts = [
-	'createdAt',
-	'updatedAt',
-	'propertyLikes',
-	'propertyViews',
-	'propertyRank',
-	'propertyPrice',
-];
-
-export const availableBoardArticleSorts = ['createdAt', 'updatedAt', 'articleLikes', 'articleViews'];
-
-export const availableCommentSorts = ['createdAt', 'updatedAt'];
+export const availableUserSorts = ['createdAt', 'updatedAt'];
 
 // IMAGE CONFIGURATION (config.js)
 import { v4 as uuidv4 } from 'uuid';
@@ -32,27 +17,27 @@ export const shapeIntoMongoObjectId = (target: any) => {
 	return typeof target === 'string' ? new ObjectId(target) : target;
 };
 
-export const lookupAuthMemberLiked = (memberId: T, targetRefId: string = '$_id') => {
+export const lookupAuthUserLiked = (userId: T, targetRefId: string = '$_id') => {
 	return {
 		$lookup: {
 			from: 'likes',
 			let: {
 				localLikeRefId: targetRefId,
-				localMemberId: memberId,
+				localUserId: userId,
 				localMyFavorite: true,
 			},
 			pipeline: [
 				{
 					$match: {
 						$expr: {
-							$and: [{ $eq: ['$likeRefId', '$$localLikeRefId'] }, { $eq: ['$memberId', '$$localMemberId'] }],
+							$and: [{ $eq: ['$likeRefId', '$$localLikeRefId'] }, { $eq: ['$userId', '$$localUserId'] }],
 						},
 					},
 				},
 				{
 					$project: {
-						_id: 0, // no need, user has it already.
-						memberId: 1,
+						_id: 0,
+						userId: 1,
 						likeRefId: 1,
 						myFavorite: '$$localMyFavorite',
 					},
@@ -63,33 +48,33 @@ export const lookupAuthMemberLiked = (memberId: T, targetRefId: string = '$_id')
 	};
 };
 
-interface LookupAuthMemberFollowed {
-	followerId: T;
-	followingId: string;
+interface LookupAuthUserFollowed {
+	followerUserId: T;
+	followedOrgId: string;
 }
-export const lookupAuthMemberFollowed = (input: LookupAuthMemberFollowed) => {
-	const {followerId, followingId} = input;
+export const lookupAuthUserFollowed = (input: LookupAuthUserFollowed) => {
+	const {followerUserId, followedOrgId} = input;
 	return {
 		$lookup: {
 			from: 'follows',
 			let: {
-				localFollowerId: followerId,
-				localFollowinId: followingId,
+				localFollowerUserId: followerUserId,
+				localFollowedOrgId: followedOrgId,
 				localMyFavorite: true,
 			},
 			pipeline: [
 				{
 					$match: {
 						$expr: {
-							$and: [{ $eq: ['$followerId', '$$localFollowerId'] }, { $eq: ['$followingId', '$$localFollowinId'] }],
+							$and: [{ $eq: ['$followerUserId', '$$localFollowerUserId'] }, { $eq: ['$followedOrgId', '$$localFollowedOrgId'] }],
 						},
 					},
 				},
 				{
 					$project: {
 						_id: 0,
-						followerId: 1,
-						followingId: 1,
+						followerUserId: 1,
+						followedOrgId: 1,
 						myFollowing: '$$localMyFavorite',
 					},
 				},
@@ -99,48 +84,13 @@ export const lookupAuthMemberFollowed = (input: LookupAuthMemberFollowed) => {
 	};
 };
 
-export const lookupMember = {
+export const lookupUser = {
 	$lookup: {
-		from: 'members',
-		localField: 'memberId',
+		from: 'users',
+		localField: 'userId',
 		foreignField: '_id',
-		as: 'memberData',
+		as: 'userData',
 	},
 };
 
-export const lookupFollowingData = {
-	$lookup: {
-		from: 'members',
-		localField: 'followingId',
-		foreignField: '_id',
-		as: 'followingData',
-	},
-};
-
-export const lookupFollowerData = {
-	$lookup: {
-		from: 'members',
-		localField: 'followingId',
-		foreignField: '_id',
-		as: 'followerData',
-	},
-};
-
-export const lookupFavorite = {
-	$lookup: {
-		from: 'members',
-		localField: 'favoriteProperty.memberId',
-		foreignField: '_id',
-		as: 'favoriteProperty.memberData',
-	},
-};
-
-export const lookupVisit = {
-	$lookup: {
-		from: 'members',
-		localField: 'visitedProperty.memberId',
-		foreignField: '_id',
-		as: 'visitedProperty.memberData',
-	},
-};
 

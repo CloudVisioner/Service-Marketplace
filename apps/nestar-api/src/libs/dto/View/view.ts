@@ -1,9 +1,8 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import  mongoose, { ObjectId } from 'mongoose';
-import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
 import { ViewGroup } from '../../enums/view.enum';
 
-@ObjectType() // graphQL output return
+@ObjectType()
 export class View {
 	@Field(() => String)
 	_id: mongoose.ObjectId;
@@ -15,13 +14,11 @@ export class View {
 	viewRefId: ObjectId
 
 	@Field(() => String)
-	memberId: ObjectId
+	userId: ObjectId
 
 	@Field(() => Date, { nullable: true })
 	createdAt: Date;
 
 	@Field(() => Date, { nullable: true })
 	updatedAt: Date;
-
-
 }

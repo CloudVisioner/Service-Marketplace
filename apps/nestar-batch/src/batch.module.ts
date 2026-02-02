@@ -5,16 +5,14 @@ import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
-import PropertySchema from 'apps/nestar-api/src/schemas/Property.model';
-import MemberSchema from 'apps/nestar-api/src/schemas/Member.model';
+import UserSchema from 'apps/nestar-api/src/schemas/User.model';
 
 @Module({
 	imports: [
 		ConfigModule.forRoot(),
 		DatabaseModule,
 		ScheduleModule.forRoot(),
-		MongooseModule.forFeature([{ name: 'Property', schema: PropertySchema }]),
-		MongooseModule.forFeature([{ name: 'Member', schema: MemberSchema }]),
+		MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]),
 	],
 	controllers: [BatchController],
 	providers: [BatchService],

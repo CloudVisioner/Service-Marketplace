@@ -1,7 +1,6 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsNotEmpty, IsOptional, Length, Min } from 'class-validator';
 import { OrganizationType, OrganizationStatus } from '../../enums/organization.enum';
-import { ObjectId } from 'mongoose';
 
 @InputType()
 export class OrganizationInput {
@@ -40,10 +39,6 @@ export class OrganizationInput {
 	@IsNotEmpty()
 	@Field(() => String)
 	orgTaxId: string;
-
-	@IsNotEmpty()
-	@Field(() => String)
-	orgOwnerUserId: ObjectId;
 
 	@IsNotEmpty()
 	@Field(() => [String])
