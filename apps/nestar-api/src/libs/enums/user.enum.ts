@@ -17,3 +17,22 @@ export enum UserStatus {
 registerEnumType(UserStatus, {
     name: 'UserStatus',
 })
+
+export enum UserAuthType {
+	EMAIL = 'EMAIL',
+	PHONE = 'PHONE',
+	GOOGLE = 'GOOGLE',
+	LINKEDIN = 'LINKEDIN',
+}
+registerEnumType(UserAuthType, {
+	name: 'UserAuthType',
+})
+
+export enum UserVerificationStatus {
+	UNVERIFIED = 'UNVERIFIED',
+	VERIFIED = 'VERIFIED',
+	PREMIUM = 'PREMIUM',
+}
+registerEnumType(UserVerificationStatus, {
+	name: 'UserVerificationStatus',
+})

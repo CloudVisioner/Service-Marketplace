@@ -8,6 +8,7 @@ import { QuoteResolver } from './quote.resolver';
 import { AuthModule } from '../auth/auth.module';
 import { OrganizationModule } from '../organization/organization.module';
 import { NotificationModule } from '../notification/notification.module';
+import { LikeModule } from '../like/like.module';
 
 @Module({
 	imports: [
@@ -28,6 +29,7 @@ import { NotificationModule } from '../notification/notification.module';
 		AuthModule,
 		OrganizationModule,
 		NotificationModule,
+		LikeModule,
 	],
 	providers: [QuoteResolver, QuoteService],
 	exports: [QuoteService],

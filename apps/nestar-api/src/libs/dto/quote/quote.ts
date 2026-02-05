@@ -4,6 +4,7 @@ import { QuoteStatus } from '../../enums/quote.enum';
 import { Organization } from '../organization/organization';
 import { ServiceRequest } from '../service-request/service-request';
 import { User } from '../user/user';
+import { MeLiked } from '../like/like';
 
 @ObjectType()
 export class Quote {
@@ -49,4 +50,7 @@ export class Quote {
 
 	@Field(() => User, { nullable: true })
 	quoteCreatedByUserData?: User;
+
+	@Field(() => [MeLiked], { nullable: true })
+	meLiked?: MeLiked[];
 }

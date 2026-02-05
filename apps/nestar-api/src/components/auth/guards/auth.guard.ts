@@ -17,13 +17,18 @@ export class AuthGuard implements CanActivate {
 
 			const token = bearerToken.split(' ')[1];
 			
-			const authUser = await this.authService.verifyUserToken(token);
-			if (!authUser) throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
+			try {
+				const authUser = await this.authService.verifyUserToken(token);
+				if (!authUser) throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
 
-			console.log('userNick[auth] =>', authUser.userNick);
-			request.body.authUser = authUser;
+				console.log('userNick[auth] =>', authUser.userNick);
+				request.body.authUser = authUser;
 
-			return true;
+				return true;
+			} catch (err) {
+				console.error('Token verification failed:', err.message);
+				throw new UnauthorizedException(err.message || Message.NOT_AUTHENTICATED);
+			}
 		}
 	
 

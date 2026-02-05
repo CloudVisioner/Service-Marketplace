@@ -5,7 +5,6 @@ export enum ViewGroup {
 	ORGANIZATION = 'ORGANIZATION',
 	SERVICE_REQUEST = 'SERVICE_REQUEST',
 	QUOTE = 'QUOTE',
-	MEMBER = 'MEMBER', // Legacy support
 }
 registerEnumType(ViewGroup, {
 	name: 'ViewGroup',

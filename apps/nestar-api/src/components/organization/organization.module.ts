@@ -5,6 +5,7 @@ import UserSchema from '../../schemas/User.model';
 import { OrganizationService } from './organization.service';
 import { OrganizationResolver } from './organization.resolver';
 import { AuthModule } from '../auth/auth.module';
+import { LikeModule } from '../like/like.module';
 
 @Module({
 	imports: [
@@ -19,6 +20,7 @@ import { AuthModule } from '../auth/auth.module';
 			},
 		]),
 		AuthModule,
+		LikeModule,
 	],
 	providers: [OrganizationResolver, OrganizationService],
 	exports: [OrganizationService],

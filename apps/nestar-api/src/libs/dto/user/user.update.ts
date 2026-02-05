@@ -1,6 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, Length } from 'class-validator';
-import { UserStatus, UserRole } from '../../enums/user.enum';
+import { IsNotEmpty, IsOptional, Length, IsEmail } from 'class-validator';
+import { UserStatus, UserRole, UserAuthType } from '../../enums/user.enum';
 import { ObjectId } from 'mongoose';
 
 @InputType()
@@ -18,8 +18,17 @@ export class UserUpdate {
 	userStatus?: UserStatus;
 
 	@IsOptional()
+	@Field(() => UserAuthType, { nullable: true })
+	userAuthType?: UserAuthType;
+
+	@IsOptional()
+	@IsEmail()
 	@Field(() => String, { nullable: true })
 	userEmail?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userPhone?: string;
 
 	@IsOptional()
 	@Length(3, 12)
@@ -35,6 +44,30 @@ export class UserUpdate {
 	@Length(3, 100)
 	@Field(() => String, { nullable: true })
 	userFullName?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userImage?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userDescription?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userOrganizationId?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userCountry?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userCity?: string;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	userLanguages?: string[];
 
 	deleteAt?: Date;
 }

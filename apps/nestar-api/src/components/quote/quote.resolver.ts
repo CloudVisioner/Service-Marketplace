@@ -10,10 +10,14 @@ import { AuthUser } from '../auth/decorators/authUser.decorator';
 import { UserRole } from '../../libs/enums/user.enum';
 import { ObjectId } from 'mongoose';
 import { shapeIntoMongoObjectId } from '../../libs/config';
+import { LikeService } from '../like/like.service';
 
 @Resolver()
 export class QuoteResolver {
-	constructor(private readonly quoteService: QuoteService) {}
+	constructor(
+		private readonly quoteService: QuoteService,
+		private readonly likeService: LikeService,
+	) {}
 
 	@Roles(UserRole.PROVIDER)
 	@UseGuards(AuthGuard, RolesGuard)
@@ -54,10 +58,13 @@ export class QuoteResolver {
 
 	@UseGuards(AuthGuard)
 	@Query(() => [Quote])
-	public async getQuotesByRequest(@Args('requestId') requestId: string): Promise<Quote[]> {
+	public async getQuotesByRequest(
+		@Args('requestId') requestId: string,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<Quote[]> {
 		console.log('Query: getQuotesByRequest');
 		const requestIdObj = shapeIntoMongoObjectId(requestId);
-		return await this.quoteService.getQuotesByRequest(requestIdObj);
+		return await this.quoteService.getQuotesByRequest(requestIdObj, userId);
 	}
 
 	@Roles(UserRole.PROVIDER)
@@ -70,5 +77,16 @@ export class QuoteResolver {
 		console.log('Query: getQuotesByOrganization');
 		const orgIdObj = shapeIntoMongoObjectId(orgId);
 		return await this.quoteService.getQuotesByOrganization(orgIdObj);
+	}
+
+	@UseGuards(AuthGuard)
+	@Mutation(() => Quote)
+	public async likeTargetQuote(
+		@Args('quoteId') quoteId: string,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<Quote> {
+		console.log('Mutation: likeTargetQuote');
+		const quoteIdObj = shapeIntoMongoObjectId(quoteId);
+		return await this.quoteService.likeTargetQuote(userId, quoteIdObj);
 	}
 }

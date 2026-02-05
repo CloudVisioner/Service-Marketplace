@@ -1,4 +1,4 @@
-import { BadRequestException, CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, CanActivate, ExecutionContext, Injectable, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthService } from '../auth.service';
 import { Message } from 'apps/nestar-api/src/libs/enums/common.enum';
@@ -23,15 +23,20 @@ export class RolesGuard implements CanActivate {
 
 			const token = bearerToken.split(' ')[1];
 			
-			const authUser = await this.authService.verifyUserToken(token);
-			const hasRole = () => roles.indexOf(authUser.userRole) > -1;
-			const hasPermission: boolean = hasRole();
+			try {
+				const authUser = await this.authService.verifyUserToken(token);
+				const hasRole = () => roles.indexOf(authUser.userRole) > -1;
+				const hasPermission: boolean = hasRole();
 
-			if (!authUser || !hasPermission) throw new ForbiddenException(Message.ONLY_SPECIFIC_ROLES_ALLOWED);
+				if (!authUser || !hasPermission) throw new ForbiddenException(Message.ONLY_SPECIFIC_ROLES_ALLOWED);
 
-			console.log('userNick[roles] =>', authUser.userNick);
-			request.body.authUser = authUser;
-			return true;
+				console.log('userNick[roles] =>', authUser.userNick);
+				request.body.authUser = authUser;
+				return true;
+			} catch (err) {
+				console.error('Token verification failed in RolesGuard:', err.message);
+				throw new UnauthorizedException(err.message || Message.NOT_AUTHENTICATED);
+			}
 		}
 	
 		// description => http, rpc, gprs and etc are ignored

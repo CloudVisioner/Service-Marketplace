@@ -1,6 +1,6 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsIn, IsNotEmpty, IsOptional, Length, Min } from 'class-validator';
-import { UserRole, UserStatus } from '../../enums/user.enum';
+import { IsIn, IsNotEmpty, IsOptional, Length, Min, IsEmail } from 'class-validator';
+import { UserRole, UserStatus, UserAuthType } from '../../enums/user.enum';
 import { availableUserSorts } from '../../config';
 import { Direction } from '../../enums/common.enum';
 
@@ -16,13 +16,50 @@ export class UserInput {
 	@Field(() => String)
 	userPassword: string;
 
-	@IsNotEmpty()
-	@Field(() => String)
-	userEmail: string;
+	@IsOptional()
+	@IsEmail()
+	@Field(() => String, { nullable: true })
+	userEmail?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userPhone?: string;
+
+	@IsOptional()
+	@Field(() => UserAuthType, { nullable: true })
+	userAuthType?: UserAuthType;
 
 	@IsOptional()
 	@Field(() => UserRole, { nullable: true })
 	userRole?: UserRole;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userFullName?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userImage?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userDescription?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userOrganizationId?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userCountry?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	userCity?: string;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	userLanguages?: string[];
 }
 
 @InputType()

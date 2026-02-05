@@ -8,6 +8,9 @@ import { Message } from '../../libs/enums/common.enum';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType, NotificationGroup } from '../../libs/enums/notification.enum';
+import { LikeService } from '../like/like.service';
+import { LikeInput } from '../../libs/dto/like/like.input';
+import { LikeGroup } from '../../libs/enums/like.enum';
 
 @Injectable()
 export class QuoteService {
@@ -16,6 +19,7 @@ export class QuoteService {
 		@InjectModel('ServiceRequest') private serviceRequestModel: Model<any>,
 		@InjectModel('Organization') private organizationModel: Model<any>,
 		private notificationService: NotificationService,
+		private likeService: LikeService,
 	) {}
 
 	public async createQuote(orgId: ObjectId, userId: ObjectId, input: QuoteInput): Promise<Quote> {
@@ -201,7 +205,7 @@ export class QuoteService {
 		return result;
 	}
 
-	public async getQuotesByRequest(requestId: ObjectId): Promise<Quote[]> {
+	public async getQuotesByRequest(requestId: ObjectId, userId?: ObjectId | null): Promise<Quote[]> {
 		const requestIdObj = shapeIntoMongoObjectId(requestId);
 
 		const result = await this.quoteModel
@@ -233,6 +237,18 @@ export class QuoteService {
 			])
 			.exec();
 
+		// Populate meLiked for each quote if user is authenticated
+		if (userId) {
+			for (const quote of result) {
+				const likeInput: LikeInput = {
+					userId: userId,
+					likeRefId: quote._id,
+					likeGroup: LikeGroup.QUOTE,
+				};
+				quote.meLiked = await this.likeService.checkLikeExistence(likeInput);
+			}
+		}
+
 		return result;
 	}
 
@@ -258,5 +274,23 @@ export class QuoteService {
 			.exec();
 
 		return result;
+	}
+
+	public async likeTargetQuote(userId: ObjectId, quoteId: ObjectId): Promise<Quote> {
+		const quote: Quote = await this.quoteModel.findOne({ _id: quoteId }).lean().exec();
+		if (!quote) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+		const input: LikeInput = {
+			userId: userId,
+			likeRefId: quoteId,
+			likeGroup: LikeGroup.QUOTE,
+		};
+
+		await this.likeService.toggleLike(input);
+
+		// Populate meLiked to show if current user liked this quote
+		quote.meLiked = await this.likeService.checkLikeExistence(input);
+
+		return quote;
 	}
 }

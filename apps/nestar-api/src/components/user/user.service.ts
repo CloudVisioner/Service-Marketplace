@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { User, Users } from '../../libs/dto/user/user';
 import { LoginInput, UserInput, UsersInquiry } from '../../libs/dto/user/user.input';
-import { UserStatus, UserRole } from '../../libs/enums/user.enum';
+import { UserStatus, UserRole, UserAuthType } from '../../libs/enums/user.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
 import { UserUpdate } from '../../libs/dto/user/user.update';
@@ -14,7 +14,7 @@ import { LikeInput } from '../../libs/dto/like/like.input';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { LikeService } from '../like/like.service';
 import { MeFollowed } from '../../libs/dto/follow/follow';
-import { lookupAuthUserLiked } from '../../libs/config';
+import { lookupAuthUserLiked, shapeIntoMongoObjectId } from '../../libs/config';
 
 @Injectable()
 export class UserService {
@@ -27,50 +27,170 @@ export class UserService {
 	) {}
 
 	public async signup(input: UserInput): Promise<User> {
-		input.userPassword = await this.authService.hashPassword(input.userPassword);
+		// Validate that either email or phone is provided
+		if (!input.userEmail && !input.userPhone) {
+			throw new BadRequestException('Either email or phone number is required');
+		}
+
+		// Check for duplicate userNick
+		const existingNick = await this.userModel.findOne({ userNick: input.userNick }).exec();
+		if (existingNick) {
+			throw new BadRequestException('Username already exists. Please choose a different username.');
+		}
+
+		// Check for duplicate email if provided
+		if (input.userEmail) {
+			const existingEmail = await this.userModel.findOne({ userEmail: input.userEmail }).exec();
+			if (existingEmail) {
+				throw new BadRequestException('Email already registered. Please use a different email or login.');
+			}
+		}
+
+		// Check for duplicate phone if provided
+		if (input.userPhone) {
+			const existingPhone = await this.userModel.findOne({ userPhone: input.userPhone }).exec();
+			if (existingPhone) {
+				throw new BadRequestException('Phone number already registered. Please use a different phone or login.');
+			}
+		}
+
+		// Set default auth type if not provided
+		if (!input.userAuthType) {
+			input.userAuthType = input.userEmail ? UserAuthType.EMAIL : UserAuthType.PHONE;
+		}
+
+		// Convert organizationId string to ObjectId if provided
+		const signupData: any = { ...input };
+		if (input.userOrganizationId) {
+			signupData.userOrganizationId = shapeIntoMongoObjectId(input.userOrganizationId);
+		}
+
+		signupData.userPassword = await this.authService.hashPassword(input.userPassword);
+		
 		try {
-			const result = await this.userModel.create(input);
+			const createdUser = await this.userModel.create(signupData);
+			
+			// Fetch full user data with organization populated - using lean() to get plain object
+			const fullUser = await this.userModel
+				.aggregate([
+					{ $match: { _id: createdUser._id } },
+					{
+						$lookup: {
+							from: 'organizations',
+							localField: 'userOrganizationId',
+							foreignField: '_id',
+							as: 'userOrganization',
+						},
+					},
+					{
+						$unwind: { path: '$userOrganization', preserveNullAndEmptyArrays: true },
+					},
+				])
+				.exec();
+
+			if (!fullUser.length) {
+				throw new InternalServerErrorException(Message.CREATE_FAILED);
+			}
+
+			const result = fullUser[0];
 			result.accessToken = await this.authService.createUserToken(result);
 			return result;
 		} catch (err) {
 			console.log('Error, Service.model:', err.message);
+			// If it's a validation error we already handled, re-throw it
+			if (err instanceof BadRequestException) {
+				throw err;
+			}
+			// Otherwise it might be a duplicate key error from MongoDB
 			throw new BadRequestException(Message.USED_USER_NICK_OR_EMAIL);
 		}
 	}
 
 	public async login(input: LoginInput): Promise<User> {
 		const { userNick, userPassword } = input;
-		const response: User = await this.userModel
+		
+		// First find user with password to verify
+		const userWithPassword = await this.userModel
 			.findOne({ userNick: userNick })
 			.select('+userPassword')
 			.exec();
 
-		if (!response || response.userStatus === UserStatus.DELETE) {
+		if (!userWithPassword || userWithPassword.userStatus === UserStatus.DELETE) {
 			throw new InternalServerErrorException(Message.NO_USER_NICK);
-		} else if (response.userStatus === UserStatus.BLOCK) {
+		} else if (userWithPassword.userStatus === UserStatus.BLOCK) {
 			throw new InternalServerErrorException(Message.BLOCKED_USER);
 		}
 
-		const isMatch = await this.authService.comparePassword(userPassword, response.userPassword);
+		const isMatch = await this.authService.comparePassword(userPassword, userWithPassword.userPassword);
 		if (!isMatch) throw new InternalServerErrorException(Message.WRONG_PASSWORD);
 
-		response.accessToken = await this.authService.createUserToken(response);
-		return response;
+		// Fetch full user data with organization populated
+		const fullUser = await this.userModel
+			.aggregate([
+				{ $match: { _id: userWithPassword._id } },
+				{
+					$lookup: {
+						from: 'organizations',
+						localField: 'userOrganizationId',
+						foreignField: '_id',
+						as: 'userOrganization',
+					},
+				},
+				{
+					$unwind: { path: '$userOrganization', preserveNullAndEmptyArrays: true },
+				},
+			])
+			.exec();
+
+		if (!fullUser.length) {
+			throw new InternalServerErrorException(Message.NO_USER_NICK);
+		}
+
+		const result = fullUser[0];
+		result.accessToken = await this.authService.createUserToken(result);
+		return result;
 	}
 
 	public async updateUser(userId: ObjectId, input: UserUpdate): Promise<User> {
-		const result: User = await this.userModel
+		// Convert organizationId string to ObjectId if provided
+		const updateData: any = { ...input };
+		if (input.userOrganizationId) {
+			updateData.userOrganizationId = shapeIntoMongoObjectId(input.userOrganizationId);
+		}
+
+		// Update the user
+		await this.userModel
 			.findOneAndUpdate(
 				{
 					_id: userId,
 					userStatus: UserStatus.ACTIVE,
 				},
-				input,
+				updateData,
 				{ new: true },
 			)
 			.exec();
-		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		
+		// Fetch full user data with organization populated
+		const fullUser = await this.userModel
+			.aggregate([
+				{ $match: { _id: userId, userStatus: UserStatus.ACTIVE } },
+				{
+					$lookup: {
+						from: 'organizations',
+						localField: 'userOrganizationId',
+						foreignField: '_id',
+						as: 'userOrganization',
+					},
+				},
+				{
+					$unwind: { path: '$userOrganization', preserveNullAndEmptyArrays: true },
+				},
+			])
+			.exec();
 
+		if (!fullUser.length) throw new InternalServerErrorException(Message.UPDATE_FAILED);
+
+		const result = fullUser[0];
 		result.accessToken = await this.authService.createUserToken(result);
 		return result;
 	}
@@ -82,22 +202,42 @@ export class UserService {
 				$in: [UserStatus.ACTIVE, UserStatus.BLOCK],
 			},
 		};
-		const targetUser = await this.userModel.findOne(search).lean().exec();
-		if (!targetUser) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+		const targetUser = await this.userModel
+			.aggregate([
+				{ $match: search },
+				{
+					$lookup: {
+						from: 'organizations',
+						localField: 'userOrganizationId',
+						foreignField: '_id',
+						as: 'userOrganization',
+					},
+				},
+				{
+					$unwind: { path: '$userOrganization', preserveNullAndEmptyArrays: true },
+				},
+			])
+			.exec();
+
+		if (!targetUser.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+		const result = targetUser[0];
 
 		if (userId) {
 			const viewInput = { userId: userId, viewRefId: targetId, viewGroup: ViewGroup.USER };
 			const newView = await this.viewService.recordView(viewInput);
 			if (newView) {
-				// Note: User model doesn't have userViews field, so we skip increment
+				// Increment userTotalViews
+				await this.userModel.findByIdAndUpdate(targetId, { $inc: { userTotalViews: 1 } });
 			}
 			// meLiked
 			const likeInput = { userId: userId, likeRefId: targetId, likeGroup: LikeGroup.USER };
-			targetUser.meLiked = await this.likeService.checkLikeExistence(likeInput);
+			result.meLiked = await this.likeService.checkLikeExistence(likeInput);
 
-			targetUser.meFollowed = await this.checkSubscription(userId, targetId);
+			result.meFollowed = await this.checkSubscription(userId, targetId);
 		}
-		return targetUser;
+		return result;
 	}
 
 	private async checkSubscription(followerId: ObjectId, followingId: ObjectId): Promise<MeFollowed[]> {
@@ -106,8 +246,9 @@ export class UserService {
 	}
 
 	public async likeTargetUser(userId: ObjectId, likeRefId: ObjectId): Promise<User> {
-		const target: User = await this.userModel.findOne({ _id: likeRefId, userStatus: UserStatus.ACTIVE }).exec();
-		if (!target) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+		// Verify user exists first
+		const userExists = await this.userModel.findOne({ _id: likeRefId, userStatus: UserStatus.ACTIVE }).exec();
+		if (!userExists) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
 
 		const input: LikeInput = {
 			userId: userId,
@@ -115,8 +256,48 @@ export class UserService {
 			likeGroup: LikeGroup.USER,
 		};
 
+		// Check if like already exists before toggling
+		const likeExists = await this.likeService.checkLikeExistence(input);
+		const wasLiked = likeExists.length > 0;
+
+		// Toggle the like (this updates userTotalLikes in the database)
 		await this.likeService.toggleLike(input);
-		return target;
+		
+		// Recalculate total likes from actual likes in database to ensure accuracy
+		const actualLikeCount = await this.likeService.getTotalLikesCount(LikeGroup.USER, likeRefId);
+		await this.userModel.findByIdAndUpdate(likeRefId, {
+			$set: { userTotalLikes: actualLikeCount },
+		});
+		
+		// Fetch the user AFTER toggling to get updated userTotalLikes count
+		const target = await this.userModel
+			.aggregate([
+				{ $match: { _id: likeRefId, userStatus: UserStatus.ACTIVE } },
+				{
+					$lookup: {
+						from: 'organizations',
+						localField: 'userOrganizationId',
+						foreignField: '_id',
+						as: 'userOrganization',
+					},
+				},
+				{
+					$unwind: { path: '$userOrganization', preserveNullAndEmptyArrays: true },
+				},
+			])
+			.exec();
+
+		if (!target.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+		const result = target[0];
+		
+		// Populate meLiked to show if current user liked this target user
+		result.meLiked = await this.likeService.checkLikeExistence(input);
+		
+		// Populate meFollowed to show if current user follows this target user
+		result.meFollowed = await this.checkSubscription(userId, likeRefId);
+		
+		return result;
 	}
 
 	public async getAllUsersByAdmin(input: UsersInquiry): Promise<Users> {

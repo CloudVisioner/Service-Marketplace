@@ -5,6 +5,7 @@ import { Organization } from '../organization/organization';
 import { User } from '../user/user';
 import { Quote } from '../quote/quote';
 import { TotalCounter } from '../common/common';
+import { MeLiked } from '../like/like';
 
 @ObjectType()
 export class ServiceRequest {
@@ -62,6 +63,9 @@ export class ServiceRequest {
 
 	@Field(() => [Quote], { nullable: true })
 	quotes?: Quote[];
+
+	@Field(() => [MeLiked], { nullable: true })
+	meLiked?: MeLiked[];
 }
 
 @ObjectType()

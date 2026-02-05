@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { OrganizationType, OrganizationStatus } from '../../enums/organization.enum';
 import { User } from '../user/user';
 import { TotalCounter } from '../common/common';
+import { MeLiked } from '../like/like';
 
 @ObjectType()
 export class Organization {
@@ -72,6 +73,9 @@ export class Organization {
 	/** from aggregation **/
 	@Field(() => User, { nullable: true })
 	orgOwnerData?: User;
+
+	@Field(() => [MeLiked], { nullable: true })
+	meLiked?: MeLiked[];
 }
 
 @ObjectType()

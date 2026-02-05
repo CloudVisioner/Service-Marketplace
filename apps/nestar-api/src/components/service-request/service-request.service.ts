@@ -7,6 +7,9 @@ import { ServiceRequestStatus } from '../../libs/enums/service-request.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { T } from '../../libs/types/common';
 import { shapeIntoMongoObjectId } from '../../libs/config';
+import { LikeService } from '../like/like.service';
+import { LikeInput } from '../../libs/dto/like/like.input';
+import { LikeGroup } from '../../libs/enums/like.enum';
 
 @Injectable()
 export class ServiceRequestService {
@@ -14,6 +17,7 @@ export class ServiceRequestService {
 		@InjectModel('ServiceRequest') private serviceRequestModel: Model<ServiceRequest>,
 		@InjectModel('Organization') private organizationModel: Model<any>,
 		@InjectModel('User') private userModel: Model<any>,
+		private likeService: LikeService,
 	) {}
 
 	public async createServiceRequest(userId: ObjectId, input: ServiceRequestInput): Promise<ServiceRequest> {
@@ -179,7 +183,19 @@ export class ServiceRequestService {
 			throw new InternalServerErrorException(Message.NO_DATA_FOUND);
 		}
 
-		return result[0];
+		const request = result[0];
+
+		// Populate meLiked if user is authenticated
+		if (userId) {
+			const likeInput: LikeInput = {
+				userId: userId,
+				likeRefId: requestIdObj,
+				likeGroup: LikeGroup.SERVICE_REQUEST,
+			};
+			request.meLiked = await this.likeService.checkLikeExistence(likeInput);
+		}
+
+		return request;
 	}
 
 	public async getAllServiceRequests(input: ServiceRequestInquiry): Promise<ServiceRequests> {
@@ -265,5 +281,23 @@ export class ServiceRequestService {
 		}
 
 		return result;
+	}
+
+	public async likeTargetServiceRequest(userId: ObjectId, requestId: ObjectId): Promise<ServiceRequest> {
+		const request: ServiceRequest = await this.serviceRequestModel.findOne({ _id: requestId }).lean().exec();
+		if (!request) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+		const input: LikeInput = {
+			userId: userId,
+			likeRefId: requestId,
+			likeGroup: LikeGroup.SERVICE_REQUEST,
+		};
+
+		await this.likeService.toggleLike(input);
+
+		// Populate meLiked to show if current user liked this service request
+		request.meLiked = await this.likeService.checkLikeExistence(input);
+
+		return request;
 	}
 }

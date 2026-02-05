@@ -26,10 +26,6 @@ const OrganizationSchema = new Schema(
 			required: true,
 		},
 
-		orgWebsiteUrl: {
-			type: String,
-			required: true,
-		},
 
 		orgTotalProjects: {
 			type: Number,
@@ -63,6 +59,7 @@ const OrganizationSchema = new Schema(
 		orgName: {
 			type: String,
 			required: true,
+			index: { unique: true },
 		},
 
 		orgDescription: {
@@ -96,6 +93,13 @@ const OrganizationSchema = new Schema(
 		orgTaxId: {
 			type: String,
 			required: true,
+			index: { unique: true },
+		},
+
+		orgWebsiteUrl: {
+			type: String,
+			required: true,
+			index: { unique: true },
 		},
 
 		deletedAt: {

@@ -11,10 +11,14 @@ import { UserRole } from '../../libs/enums/user.enum';
 import { ServiceRequestStatus } from '../../libs/enums/service-request.enum';
 import { ObjectId } from 'mongoose';
 import { shapeIntoMongoObjectId } from '../../libs/config';
+import { LikeService } from '../like/like.service';
 
 @Resolver()
 export class ServiceRequestResolver {
-	constructor(private readonly serviceRequestService: ServiceRequestService) {}
+	constructor(
+		private readonly serviceRequestService: ServiceRequestService,
+		private readonly likeService: LikeService,
+	) {}
 
 	@Roles(UserRole.BUYER)
 	@UseGuards(AuthGuard, RolesGuard)
@@ -66,5 +70,16 @@ export class ServiceRequestResolver {
 		console.log('Mutation: updateServiceRequestStatus');
 		const requestIdObj = shapeIntoMongoObjectId(requestId);
 		return await this.serviceRequestService.updateServiceRequestStatus(requestIdObj, status);
+	}
+
+	@UseGuards(AuthGuard)
+	@Mutation(() => ServiceRequest)
+	public async likeTargetServiceRequest(
+		@Args('requestId') requestId: string,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<ServiceRequest> {
+		console.log('Mutation: likeTargetServiceRequest');
+		const requestIdObj = shapeIntoMongoObjectId(requestId);
+		return await this.serviceRequestService.likeTargetServiceRequest(userId, requestIdObj);
 	}
 }
