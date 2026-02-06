@@ -7,9 +7,6 @@ import { ServiceRequestStatus } from '../../libs/enums/service-request.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { T } from '../../libs/types/common';
 import { shapeIntoMongoObjectId } from '../../libs/config';
-import { LikeService } from '../like/like.service';
-import { LikeInput } from '../../libs/dto/like/like.input';
-import { LikeGroup } from '../../libs/enums/like.enum';
 
 @Injectable()
 export class ServiceRequestService {
@@ -17,42 +14,50 @@ export class ServiceRequestService {
 		@InjectModel('ServiceRequest') private serviceRequestModel: Model<ServiceRequest>,
 		@InjectModel('Organization') private organizationModel: Model<any>,
 		@InjectModel('User') private userModel: Model<any>,
-		private likeService: LikeService,
 	) {}
 
 	public async createServiceRequest(userId: ObjectId, input: ServiceRequestInput): Promise<ServiceRequest> {
 		try {
-			// Rule: Every user MUST have 1+ orgs to use platform
-			// Check if user has at least one organization
-			const userOrgs = await this.organizationModel
-				.find({ orgOwnerUserId: userId })
-				.exec();
-
-			if (!userOrgs || userOrgs.length === 0) {
-				throw new BadRequestException('You must have at least one organization to create service requests. Please create an organization first.');
+			// Rule: Only BUYER users can create service requests
+			const user = await this.userModel.findById(userId).exec();
+			if (!user) {
+				throw new BadRequestException('User not found.');
 			}
 
-			// Verify the buyer organization exists and belongs to the user
-			const org = await this.organizationModel
-				.findOne({
-					_id: input.reqBuyerOrgId,
-					orgOwnerUserId: userId,
-				})
-				.exec();
+			if (user.userRole !== 'BUYER') {
+				throw new BadRequestException('Only BUYER users can create service requests.');
+			}
+
+			// Verify the buyer organization exists
+			const orgIdObj = shapeIntoMongoObjectId(input.reqBuyerOrgId);
+			const org = await this.organizationModel.findById(orgIdObj).exec();
 
 			if (!org) {
-				throw new BadRequestException('Organization not found or you are not the owner');
+				throw new BadRequestException('Organization not found.');
 			}
 
-			// Verify the organization is of type BUYER
+			// Verify user owns the organization
+			const orgOwnerId = shapeIntoMongoObjectId(org.orgOwnerUserId);
+			const userIdObj = shapeIntoMongoObjectId(userId);
+			if (!orgOwnerId.equals(userIdObj)) {
+				throw new BadRequestException('You are not the owner of this organization.');
+			}
+
+			// Rule: Only BUYER organizations can create service requests
 			if (org.orgType !== 'BUYER') {
 				throw new BadRequestException('Only BUYER organizations can create service requests.');
 			}
 
 			const serviceRequestData = {
-				...input,
-				reqCreatedByUserId: userId,
+				reqTitle: input.reqTitle,
+				reqDescription: input.reqDescription,
+				reqBuyerOrgId: orgIdObj,
 				reqStatus: ServiceRequestStatus.OPEN,
+				reqBudgetMin: input.reqBudgetMin,
+				reqBudgetMax: input.reqBudgetMax,
+				reqDeadline: input.reqDeadline,
+				reqSkillsNeeded: input.reqSkillsNeeded,
+				reqCreatedByUserId: userIdObj,
 				reqTotalLikes: 0,
 				reqTotalViews: 0,
 				reqTotalQuotes: 0,
@@ -198,19 +203,7 @@ export class ServiceRequestService {
 			throw new InternalServerErrorException(Message.NO_DATA_FOUND);
 		}
 
-		const request = result[0];
-
-		// Populate meLiked if user is authenticated
-		if (userId) {
-			const likeInput: LikeInput = {
-				userId: userId,
-				likeRefId: requestIdObj,
-				likeGroup: LikeGroup.SERVICE_REQUEST,
-			};
-			request.meLiked = await this.likeService.checkLikeExistence(likeInput);
-		}
-
-		return request;
+		return result[0];
 	}
 
 	public async getAllServiceRequests(input: ServiceRequestInquiry): Promise<ServiceRequests> {
@@ -298,21 +291,4 @@ export class ServiceRequestService {
 		return result;
 	}
 
-	public async likeTargetServiceRequest(userId: ObjectId, requestId: ObjectId): Promise<ServiceRequest> {
-		const request: ServiceRequest = await this.serviceRequestModel.findOne({ _id: requestId }).lean().exec();
-		if (!request) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
-
-		const input: LikeInput = {
-			userId: userId,
-			likeRefId: requestId,
-			likeGroup: LikeGroup.SERVICE_REQUEST,
-		};
-
-		await this.likeService.toggleLike(input);
-
-		// Populate meLiked to show if current user liked this service request
-		request.meLiked = await this.likeService.checkLikeExistence(input);
-
-		return request;
-	}
 }

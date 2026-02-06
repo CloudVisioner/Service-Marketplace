@@ -4,13 +4,11 @@ import { Model, ObjectId } from 'mongoose';
 import { Quote } from '../../libs/dto/quote/quote';
 import { QuoteInput } from '../../libs/dto/quote/quote.input';
 import { QuoteStatus } from '../../libs/enums/quote.enum';
+import { ServiceRequestStatus } from '../../libs/enums/service-request.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType, NotificationGroup } from '../../libs/enums/notification.enum';
-import { LikeService } from '../like/like.service';
-import { LikeInput } from '../../libs/dto/like/like.input';
-import { LikeGroup } from '../../libs/enums/like.enum';
 
 @Injectable()
 export class QuoteService {
@@ -18,23 +16,23 @@ export class QuoteService {
 		@InjectModel('Quote') private quoteModel: Model<Quote>,
 		@InjectModel('ServiceRequest') private serviceRequestModel: Model<any>,
 		@InjectModel('Organization') private organizationModel: Model<any>,
+		@InjectModel('User') private userModel: Model<any>,
 		private notificationService: NotificationService,
-		private likeService: LikeService,
 	) {}
 
 	public async createQuote(orgId: ObjectId, userId: ObjectId, input: QuoteInput): Promise<Quote> {
 		try {
-			// Rule: Every user MUST have 1+ orgs to use platform
-			// Check if user has at least one organization
-			const userOrgs = await this.organizationModel
-				.find({ orgOwnerUserId: userId })
-				.exec();
-
-			if (!userOrgs || userOrgs.length === 0) {
-				throw new BadRequestException('You must have at least one organization to send quotes. Please create an organization first.');
+			// Rule: Only PROVIDER users can create quotes
+			const user = await this.userModel.findById(userId).exec();
+			if (!user) {
+				throw new BadRequestException('User not found.');
 			}
 
-			// Verify organization exists and user is part of it
+			if (user.userRole !== 'PROVIDER') {
+				throw new BadRequestException('Only PROVIDER users can create quotes.');
+			}
+
+			// Verify organization exists and user owns it
 			const org = await this.organizationModel
 				.findOne({
 					_id: orgId,
@@ -43,24 +41,26 @@ export class QuoteService {
 				.exec();
 
 			if (!org) {
-				throw new BadRequestException('Organization not found or you are not the owner');
+				throw new BadRequestException('Organization not found or you are not the owner.');
 			}
 
-			// Verify the organization is of type SERVICE_PROVIDER
+			// Rule: Must own SERVICE_PROVIDER org
 			if (org.orgType !== 'SERVICE_PROVIDER') {
 				throw new BadRequestException('Only SERVICE_PROVIDER organizations can send quotes.');
 			}
 
-			// Verify service request exists and is open
+			// Verify service request exists
 			const serviceRequest = await this.serviceRequestModel
-				.findOne({
-					_id: input.quoteServiceReqId,
-					reqStatus: 'OPEN',
-				})
+				.findById(input.quoteServiceReqId)
 				.exec();
 
 			if (!serviceRequest) {
-				throw new BadRequestException('Service request not found or not open for quotes');
+				throw new BadRequestException('Service request not found.');
+			}
+
+			// Verify service request is open for quotes
+			if (serviceRequest.reqStatus !== ServiceRequestStatus.OPEN) {
+				throw new BadRequestException(`Service request is not open for quotes. Current status: ${serviceRequest.reqStatus}. Only OPEN service requests can receive quotes.`);
 			}
 
 			// Check if quote already exists from this organization
@@ -252,18 +252,6 @@ export class QuoteService {
 			])
 			.exec();
 
-		// Populate meLiked for each quote if user is authenticated
-		if (userId) {
-			for (const quote of result) {
-				const likeInput: LikeInput = {
-					userId: userId,
-					likeRefId: quote._id,
-					likeGroup: LikeGroup.QUOTE,
-				};
-				quote.meLiked = await this.likeService.checkLikeExistence(likeInput);
-			}
-		}
-
 		return result;
 	}
 
@@ -291,21 +279,4 @@ export class QuoteService {
 		return result;
 	}
 
-	public async likeTargetQuote(userId: ObjectId, quoteId: ObjectId): Promise<Quote> {
-		const quote: Quote = await this.quoteModel.findOne({ _id: quoteId }).lean().exec();
-		if (!quote) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
-
-		const input: LikeInput = {
-			userId: userId,
-			likeRefId: quoteId,
-			likeGroup: LikeGroup.QUOTE,
-		};
-
-		await this.likeService.toggleLike(input);
-
-		// Populate meLiked to show if current user liked this quote
-		quote.meLiked = await this.likeService.checkLikeExistence(input);
-
-		return quote;
-	}
 }

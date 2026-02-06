@@ -7,7 +7,6 @@ import { ServiceRequestService } from './service-request.service';
 import { ServiceRequestResolver } from './service-request.resolver';
 import { AuthModule } from '../auth/auth.module';
 import { OrganizationModule } from '../organization/organization.module';
-import { LikeModule } from '../like/like.module';
 
 @Module({
 	imports: [
@@ -27,7 +26,6 @@ import { LikeModule } from '../like/like.module';
 		]),
 		AuthModule,
 		OrganizationModule,
-		LikeModule,
 	],
 	providers: [ServiceRequestResolver, ServiceRequestService],
 	exports: [ServiceRequestService],

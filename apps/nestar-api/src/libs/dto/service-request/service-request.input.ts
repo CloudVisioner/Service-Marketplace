@@ -18,10 +18,6 @@ export class ServiceRequestInput {
 	reqBuyerOrgId: ObjectId;
 
 	@IsNotEmpty()
-	@Field(() => ServiceRequestStatus)
-	reqStatus: ServiceRequestStatus;
-
-	@IsNotEmpty()
 	@Field(() => Number)
 	reqBudgetMin: number;
 
