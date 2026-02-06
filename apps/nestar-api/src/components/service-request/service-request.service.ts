@@ -22,6 +22,16 @@ export class ServiceRequestService {
 
 	public async createServiceRequest(userId: ObjectId, input: ServiceRequestInput): Promise<ServiceRequest> {
 		try {
+			// Rule: Every user MUST have 1+ orgs to use platform
+			// Check if user has at least one organization
+			const userOrgs = await this.organizationModel
+				.find({ orgOwnerUserId: userId })
+				.exec();
+
+			if (!userOrgs || userOrgs.length === 0) {
+				throw new BadRequestException('You must have at least one organization to create service requests. Please create an organization first.');
+			}
+
 			// Verify the buyer organization exists and belongs to the user
 			const org = await this.organizationModel
 				.findOne({
@@ -32,6 +42,11 @@ export class ServiceRequestService {
 
 			if (!org) {
 				throw new BadRequestException('Organization not found or you are not the owner');
+			}
+
+			// Verify the organization is of type BUYER
+			if (org.orgType !== 'BUYER') {
+				throw new BadRequestException('Only BUYER organizations can create service requests.');
 			}
 
 			const serviceRequestData = {

@@ -1,9 +1,9 @@
 import { registerEnumType } from '@nestjs/graphql';
 
 export enum OrganizationType {
-	BUYER = 'BUYER',
-	SELLER = 'SELLER',
-	BOTH = 'BOTH',
+	SERVICE_PROVIDER = 'SERVICE_PROVIDER', // Offers services, gets quotes, can be followed/liked
+	BUYER = 'BUYER', // Posts ServiceRequests
+	PLATFORM_ADMIN = 'PLATFORM_ADMIN', // Platform management
 }
 registerEnumType(OrganizationType, {
 	name: 'OrganizationType',

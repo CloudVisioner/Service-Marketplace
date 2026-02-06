@@ -10,6 +10,7 @@ import { LikeService } from '../like/like.service';
 import { LikeInput } from '../../libs/dto/like/like.input';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { OrganizationStatus } from '../../libs/enums/organization.enum';
+import { UserRole } from '../../libs/enums/user.enum';
 
 @Injectable()
 export class OrganizationService {
@@ -39,6 +40,20 @@ export class OrganizationService {
 		}
 
 		console.log('User found:', creator._id.toString(), creator.userNick, creator.userRole);
+
+		// Validate orgType matches user role
+		// Rule: User.role = PROVIDER → owns SERVICE_PROVIDER org
+		// Rule: User.role = BUYER → owns BUYER org
+		// Rule: User.role = ADMIN → owns PLATFORM_ADMIN org
+		if (creator.userRole === 'PROVIDER' && input.orgType !== 'SERVICE_PROVIDER') {
+			throw new BadRequestException('PROVIDER users can only create SERVICE_PROVIDER organizations.');
+		}
+		if (creator.userRole === 'BUYER' && input.orgType !== 'BUYER') {
+			throw new BadRequestException('BUYER users can only create BUYER organizations.');
+		}
+		if (creator.userRole === 'ADMIN' && input.orgType !== 'PLATFORM_ADMIN') {
+			throw new BadRequestException('ADMIN users can only create PLATFORM_ADMIN organizations.');
+		}
 
 		// Check for duplicate organization name
 		const existingName = await this.organizationModel.findOne({ orgName: input.orgName }).exec();
@@ -196,23 +211,78 @@ export class OrganizationService {
 		return result;
 	}
 
-	public async updateOrganization(orgId: ObjectId, userId: ObjectId, input: any): Promise<Organization> {
+	public async updateOrganization(orgId: ObjectId, userId: ObjectId, userRole: string, input: any): Promise<Organization> {
 		const orgIdObj = shapeIntoMongoObjectId(orgId);
+		const userIdObj = shapeIntoMongoObjectId(userId);
 
-		// Verify user owns the organization
-		const org = await this.organizationModel
-			.findOne({
-				_id: orgIdObj,
-				orgOwnerUserId: userId,
-			})
-			.exec();
+		// First, check if the organization exists
+		const org = await this.organizationModel.findById(orgIdObj).exec();
 
 		if (!org) {
-			throw new BadRequestException('Organization not found or you are not the owner');
+			throw new BadRequestException('Organization does not exist.');
+		}
+
+		// Check if user is admin OR the organization creator/owner
+		const orgOwnerId = shapeIntoMongoObjectId(org.orgOwnerUserId);
+		const isAdmin = userRole === UserRole.ADMIN;
+		const isOwner = orgOwnerId.equals(userIdObj);
+
+		if (!isAdmin && !isOwner) {
+			throw new BadRequestException('Only the organization creator or admin can update this organization.');
+		}
+
+		// Remove _id and orgOwnerUserId from input to prevent modification
+		const { _id, orgOwnerUserId, ...updateData } = input as any;
+
+		// If orgType is being updated, validate it matches user role
+		if (updateData.orgType) {
+			const user = await this.userModel.findById(userIdObj).exec();
+			if (user) {
+				// Rule: User.role = PROVIDER → owns SERVICE_PROVIDER org
+				// Rule: User.role = BUYER → owns BUYER org
+				// Rule: User.role = ADMIN → owns PLATFORM_ADMIN org
+				if (user.userRole === 'PROVIDER' && updateData.orgType !== 'SERVICE_PROVIDER') {
+					throw new BadRequestException('PROVIDER users can only have SERVICE_PROVIDER organizations.');
+				}
+				if (user.userRole === 'BUYER' && updateData.orgType !== 'BUYER') {
+					throw new BadRequestException('BUYER users can only have BUYER organizations.');
+				}
+				if (user.userRole === 'ADMIN' && updateData.orgType !== 'PLATFORM_ADMIN') {
+					throw new BadRequestException('ADMIN users can only have PLATFORM_ADMIN organizations.');
+				}
+			}
+		}
+
+		// Prevent updating unique fields if they conflict with existing organizations
+		if (updateData.orgName && updateData.orgName !== org.orgName) {
+			const existingName = await this.organizationModel
+				.findOne({ orgName: updateData.orgName, _id: { $ne: orgIdObj } })
+				.exec();
+			if (existingName) {
+				throw new BadRequestException('Organization with this name already exists. Please choose a different name.');
+			}
+		}
+
+		if (updateData.orgTaxId && updateData.orgTaxId !== org.orgTaxId) {
+			const existingTaxId = await this.organizationModel
+				.findOne({ orgTaxId: updateData.orgTaxId, _id: { $ne: orgIdObj } })
+				.exec();
+			if (existingTaxId) {
+				throw new BadRequestException('Organization with this tax ID already exists. Tax ID must be unique.');
+			}
+		}
+
+		if (updateData.orgWebsiteUrl && updateData.orgWebsiteUrl !== org.orgWebsiteUrl) {
+			const existingWebsite = await this.organizationModel
+				.findOne({ orgWebsiteUrl: updateData.orgWebsiteUrl, _id: { $ne: orgIdObj } })
+				.exec();
+			if (existingWebsite) {
+				throw new BadRequestException('Organization with this website URL already exists. Website URL must be unique.');
+			}
 		}
 
 		const result = await this.organizationModel
-			.findByIdAndUpdate(orgIdObj, input, {
+			.findByIdAndUpdate(orgIdObj, updateData, {
 				new: true,
 			})
 			.exec();
@@ -225,19 +295,51 @@ export class OrganizationService {
 	}
 
 	public async likeTargetOrganization(userId: ObjectId, orgId: ObjectId): Promise<Organization> {
-		const org: Organization = await this.organizationModel
-			.findOne({ _id: orgId, orgStatus: OrganizationStatus.ACTIVE })
+		const orgIdObj = shapeIntoMongoObjectId(orgId);
+		const userIdObj = shapeIntoMongoObjectId(userId);
+
+		// First check if organization exists and is active
+		const orgCheck = await this.organizationModel
+			.findOne({ _id: orgIdObj, orgStatus: OrganizationStatus.ACTIVE })
 			.lean()
 			.exec();
-		if (!org) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+		if (!orgCheck) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+		// Rule: Only SERVICE_PROVIDER orgs can be liked
+		if (orgCheck.orgType !== 'SERVICE_PROVIDER') {
+			throw new BadRequestException('Only SERVICE_PROVIDER organizations can be liked.');
+		}
 
 		const input: LikeInput = {
-			userId: userId,
-			likeRefId: orgId,
+			userId: userIdObj,
+			likeRefId: orgIdObj,
 			likeGroup: LikeGroup.ORGANIZATION,
 		};
 
+		// Toggle the like (this updates orgTotalLikes in the database)
 		await this.likeService.toggleLike(input);
+
+		// Re-fetch the organization AFTER toggling to get updated orgTotalLikes count
+		const result = await this.organizationModel
+			.aggregate([
+				{ $match: { _id: orgIdObj, orgStatus: OrganizationStatus.ACTIVE } },
+				{
+					$lookup: {
+						from: 'users',
+						localField: 'orgOwnerUserId',
+						foreignField: '_id',
+						as: 'orgOwnerData',
+					},
+				},
+				{
+					$unwind: { path: '$orgOwnerData', preserveNullAndEmptyArrays: true },
+				},
+			])
+			.exec();
+
+		if (!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+		const org = result[0];
 
 		// Populate meLiked to show if current user liked this organization
 		org.meLiked = await this.likeService.checkLikeExistence(input);

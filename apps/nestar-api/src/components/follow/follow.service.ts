@@ -38,6 +38,11 @@ export class FollowService {
 			}
 			throw new BadRequestException('Invalid organization ID. Only organizations can be followed.');
 		}
+
+		// Rule: Only SERVICE_PROVIDER orgs can be followed/liked
+		if (org.orgType !== 'SERVICE_PROVIDER') {
+			throw new BadRequestException('Only SERVICE_PROVIDER organizations can be followed.');
+		}
 		
 		const orgId = followingId;
 

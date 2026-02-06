@@ -24,6 +24,16 @@ export class QuoteService {
 
 	public async createQuote(orgId: ObjectId, userId: ObjectId, input: QuoteInput): Promise<Quote> {
 		try {
+			// Rule: Every user MUST have 1+ orgs to use platform
+			// Check if user has at least one organization
+			const userOrgs = await this.organizationModel
+				.find({ orgOwnerUserId: userId })
+				.exec();
+
+			if (!userOrgs || userOrgs.length === 0) {
+				throw new BadRequestException('You must have at least one organization to send quotes. Please create an organization first.');
+			}
+
 			// Verify organization exists and user is part of it
 			const org = await this.organizationModel
 				.findOne({
@@ -34,6 +44,11 @@ export class QuoteService {
 
 			if (!org) {
 				throw new BadRequestException('Organization not found or you are not the owner');
+			}
+
+			// Verify the organization is of type SERVICE_PROVIDER
+			if (org.orgType !== 'SERVICE_PROVIDER') {
+				throw new BadRequestException('Only SERVICE_PROVIDER organizations can send quotes.');
 			}
 
 			// Verify service request exists and is open

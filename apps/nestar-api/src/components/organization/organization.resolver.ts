@@ -64,16 +64,26 @@ export class OrganizationResolver {
 		return await this.organizationService.getMyOrganizations(userId);
 	}
 
-	@Roles(UserRole.PROVIDER, UserRole.BUYER)
+	@Roles(UserRole.PROVIDER, UserRole.BUYER, UserRole.ADMIN)
 	@UseGuards(AuthGuard, RolesGuard)
 	@Mutation(() => Organization)
 	public async updateOrganization(
 		@Args('input') input: OrganizationUpdate,
 		@AuthUser('_id') userId: ObjectId,
+		@AuthUser('userRole') userRole: string,
 	): Promise<Organization> {
 		console.log('Mutation: updateOrganization');
+		
+		if (!input._id) {
+			throw new BadRequestException('Organization ID is required.');
+		}
+		
+		if (!userId) {
+			throw new BadRequestException('User ID not found in authentication token. Please login again.');
+		}
+		
 		const orgIdObj = shapeIntoMongoObjectId(input._id);
-		return await this.organizationService.updateOrganization(orgIdObj, userId, input);
+		return await this.organizationService.updateOrganization(orgIdObj, userId, userRole, input);
 	}
 
 	@UseGuards(AuthGuard)
