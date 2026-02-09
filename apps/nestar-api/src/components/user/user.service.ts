@@ -8,21 +8,18 @@ import { Direction, Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
 import { UserUpdate } from '../../libs/dto/user/user.update';
 import { T } from '../../libs/types/common';
-import { ViewService } from '../view/view.service';
-import { ViewGroup } from '../../libs/enums/view.enum';
-import { LikeInput } from '../../libs/dto/like/like.input';
-import { LikeGroup } from '../../libs/enums/like.enum';
 import { LikeService } from '../like/like.service';
-import { MeFollowed } from '../../libs/dto/follow/follow';
-import { lookupAuthUserLiked, shapeIntoMongoObjectId } from '../../libs/config';
+import { shapeIntoMongoObjectId } from '../../libs/config';
 
 @Injectable()
 export class UserService {
 	constructor(
 		@InjectModel('User') private readonly userModel: Model<User>,
 		@InjectModel('Follow') private readonly followModel: Model<any>,
+		@InjectModel('ServiceRequest') private readonly serviceRequestModel: Model<any>,
+		@InjectModel('Quote') private readonly quoteModel: Model<any>,
+		@InjectModel('Organization') private readonly organizationModel: Model<any>,
 		private authService: AuthService,
-		private viewService: ViewService,
 		private likeService: LikeService,
 	) {}
 
@@ -203,19 +200,48 @@ export class UserService {
 			},
 		};
 
+		// Get actual counts from database
+		const serviceRequestCount = await this.serviceRequestModel.countDocuments({
+			reqCreatedByUserId: targetId,
+		}).exec();
+
+		const quoteCount = await this.quoteModel.countDocuments({
+			quoteCreatedByUserId: targetId,
+		}).exec();
+
+		const orgCount = await this.organizationModel.countDocuments({
+			orgOwnerUserId: targetId,
+		}).exec();
+
 		const targetUser = await this.userModel
 			.aggregate([
 				{ $match: search },
 				{
 					$lookup: {
 						from: 'organizations',
-						localField: 'userOrganizationId',
-						foreignField: '_id',
+						let: { userId: '$_id' },
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$eq: ['$orgOwnerUserId', '$$userId'],
+									},
+								},
+							},
+							{ $limit: 1 }, // Get first organization owned by user
+						],
 						as: 'userOrganization',
 					},
 				},
 				{
 					$unwind: { path: '$userOrganization', preserveNullAndEmptyArrays: true },
+				},
+				{
+					$addFields: {
+						userTotalServiceRequests: serviceRequestCount || 0,
+						userTotalQuotes: quoteCount || 0,
+						userOrgCount: orgCount || 0,
+					},
 				},
 			])
 			.exec();
@@ -224,27 +250,12 @@ export class UserService {
 
 		const result = targetUser[0];
 
-		if (userId) {
-			const viewInput = { userId: userId, viewRefId: targetId, viewGroup: ViewGroup.USER };
-			const newView = await this.viewService.recordView(viewInput);
-			if (newView) {
-				// Increment userTotalViews
-				await this.userModel.findByIdAndUpdate(targetId, { $inc: { userTotalViews: 1 } });
-			}
-			// Users cannot be liked - removed
-			result.meLiked = [];
-
-			result.meFollowed = await this.checkSubscription(userId, targetId);
-		}
+		// Users cannot be viewed, liked, or followed - removed
 		return result;
 	}
 
-	private async checkSubscription(followerId: ObjectId, followingId: ObjectId): Promise<MeFollowed[]> {
-		const result = await this.followModel.findOne({ followedOrgId: followingId, followerUserId: followerId }).exec();
-		return result ? [{ followerUserId: followerId, followedOrgId: followingId, myFollowing: true }] : [];
-	}
-
 	// Removed: likeTargetUser - Users cannot be liked, only SERVICE_PROVIDER organizations can be liked
+	// Removed: checkSubscription - Users cannot be followed, only organizations can be followed
 
 	public async getAllUsersByAdmin(input: UsersInquiry): Promise<Users> {
 		const { userStatus, userRole, text } = input.search;
@@ -262,7 +273,48 @@ export class UserService {
 				{ $sort: sort },
 				{
 					$facet: {
-						list: [{ $skip: (input.page - 1) * input.limit }, { $limit: input.limit }],
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+							{
+								$lookup: {
+									from: 'serviceRequests',
+									localField: '_id',
+									foreignField: 'reqCreatedByUserId',
+									as: 'serviceRequests',
+								},
+							},
+							{
+								$lookup: {
+									from: 'quotes',
+									localField: '_id',
+									foreignField: 'quoteCreatedByUserId',
+									as: 'quotes',
+								},
+							},
+							{
+								$lookup: {
+									from: 'organizations',
+									localField: '_id',
+									foreignField: 'orgOwnerUserId',
+									as: 'organizations',
+								},
+							},
+							{
+								$addFields: {
+									userTotalServiceRequests: { $size: { $ifNull: ['$serviceRequests', []] } },
+									userTotalQuotes: { $size: { $ifNull: ['$quotes', []] } },
+									userOrgCount: { $size: { $ifNull: ['$organizations', []] } },
+								},
+							},
+							{
+								$project: {
+									serviceRequests: 0,
+									quotes: 0,
+									organizations: 0,
+								},
+							},
+						],
 						metaCounter: [{ $count: 'total' }],
 					},
 				},

@@ -1,8 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import mongoose from 'mongoose';
 import { UserRole, UserStatus, UserAuthType } from '../../enums/user.enum';
-import { MeLiked } from '../like/like';
-import { MeFollowed } from '../follow/follow';
 import { TotalCounter } from '../common/common';
 import { Organization } from '../organization/organization';
 
@@ -65,18 +63,6 @@ export class User {
 	userTotalQuotes: number;
 
 	@Field(() => Int)
-	userTotalFollowers: number;
-
-	@Field(() => Int)
-	userTotalFollowing: number;
-
-	@Field(() => Int)
-	userTotalLikes: number;
-
-	@Field(() => Int)
-	userTotalViews: number;
-
-	@Field(() => Int)
 	userOrgCount: number;
 
 	@Field(() => Date, { nullable: true })
@@ -90,13 +76,6 @@ export class User {
 
 	@Field(() => String, { nullable: true })
 	accessToken?: string;
-
-	// ** from aggregation **/
-	@Field(() => [MeLiked], { nullable: true })
-	meLiked?: MeLiked[];
-
-	@Field(() => [MeFollowed], { nullable: true })
-	meFollowed?: MeFollowed[];
 }
 
 @ObjectType()

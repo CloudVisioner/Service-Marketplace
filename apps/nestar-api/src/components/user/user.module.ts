@@ -3,17 +3,23 @@ import { UserResolver } from './user.resolver';
 import { UserService } from './user.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import UserSchema from '../../schemas/User.model';
+import ServiceRequestSchema from '../../schemas/ServiceRequest.model';
+import QuoteSchema from '../../schemas/Quote.model';
+import OrganizationSchema from '../../schemas/Organization.model';
 import { AuthModule } from '../auth/auth.module';
-import { ViewModule } from '../view/view.module';
 import { LikeModule } from '../like/like.module';
 import FollowSchema from '../../schemas/Follow.model';
 
 @Module({
 	imports: [
-		MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]),
-		MongooseModule.forFeature([{ name: 'Follow', schema: FollowSchema }]),
+		MongooseModule.forFeature([
+			{ name: 'User', schema: UserSchema },
+			{ name: 'Follow', schema: FollowSchema },
+			{ name: 'ServiceRequest', schema: ServiceRequestSchema },
+			{ name: 'Quote', schema: QuoteSchema },
+			{ name: 'Organization', schema: OrganizationSchema },
+		]),
 		AuthModule,
-		ViewModule,
 		LikeModule,
 	],
 	providers: [UserResolver, UserService],

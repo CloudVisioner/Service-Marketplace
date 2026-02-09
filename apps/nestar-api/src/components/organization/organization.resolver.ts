@@ -44,10 +44,11 @@ export class OrganizationResolver {
 	public async getOrganization(
 		@Args('orgId') orgId: string,
 		@AuthUser('_id') userId: ObjectId,
+		@AuthUser('userRole') userRole: string,
 	): Promise<Organization> {
 		console.log('Query: getOrganization');
 		const orgIdObj = shapeIntoMongoObjectId(orgId);
-		return await this.organizationService.getOrganization(orgIdObj, userId);
+		return await this.organizationService.getOrganization(orgIdObj, userId, userRole);
 	}
 
 	@UseGuards(AuthGuard)

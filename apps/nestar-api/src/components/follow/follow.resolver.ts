@@ -29,31 +29,6 @@ export class FollowResolver {
 		return await this.followService.unsubscribe(userId, followingId);
 	}
 
-	@UseGuards(WithoutGuard)
-	@Query((returns) => Followings)
-	public async getMemberFollowings(
-		@Args('input') input: FollowInquiry,
-		@AuthUser('_id') userId: ObjectId,
-	): Promise<Followings> {
-		console.log('Query: getMemberFollowings');
-		const { followerUserId } = input.search;
-		if (followerUserId) {
-			input.search.followerUserId = shapeIntoMongoObjectId(followerUserId);
-		}
-		return await this.followService.getMemberFollowings(userId, input);
-	}
-
-		@UseGuards(WithoutGuard)
-	@Query((returns) => Followers)
-	public async getMemberFollowers(
-		@Args('input') input: FollowInquiry,
-		@AuthUser('_id') userId: ObjectId,
-	): Promise<Followers> {
-		console.log('Query: getMemberFollowers');
-		const { followedOrgId } = input.search;
-		if (followedOrgId) {
-			input.search.followedOrgId = shapeIntoMongoObjectId(followedOrgId);
-		}
-		return await this.followService.getMemberFollowers(userId, input);
-	}
+	// Removed: getMemberFollowings - Users cannot have followings
+	// Removed: getMemberFollowers - Users cannot have followers
 }

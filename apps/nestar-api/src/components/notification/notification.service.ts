@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, Inject, forwardRef } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Notification, Notifications } from '../../libs/dto/notification/notification';
@@ -130,12 +130,26 @@ export class NotificationService {
 	public async markAsRead(notificationId: ObjectId, userId: ObjectId): Promise<Notification> {
 		const notificationIdObj = shapeIntoMongoObjectId(notificationId);
 
+		// First check if notification exists
+		const notification = await this.notificationModel.findById(notificationIdObj).exec();
+		
+		if (!notification) {
+			throw new BadRequestException('Notification not found.');
+		}
+
+		// Check if user is the receiver
+		if (notification.receiverUserId.toString() !== userId.toString()) {
+			throw new BadRequestException('You can only mark your own notifications as read.');
+		}
+
+		// Check if already read
+		if (notification.notificationStatus === NotificationStatus.READ) {
+			throw new BadRequestException('This notification is already marked as read.');
+		}
+
 		const result = await this.notificationModel
-			.findOneAndUpdate(
-				{
-					_id: notificationIdObj,
-					receiverUserId: userId,
-				},
+			.findByIdAndUpdate(
+				notificationIdObj,
 				{ notificationStatus: NotificationStatus.READ },
 				{ new: true },
 			)

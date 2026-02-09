@@ -58,8 +58,8 @@ export class Organization {
 	@Field(() => [String])
 	orgLogoImages: string[];
 
-	@Field(() => String)
-	orgTaxId: string;
+	@Field(() => String, { nullable: true })
+	orgTaxId?: string;
 
 	@Field(() => Date, { nullable: true })
 	deletedAt?: Date;

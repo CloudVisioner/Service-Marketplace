@@ -43,7 +43,7 @@ export class NotificationResolver {
 	@UseGuards(AuthGuard)
 	@Query(() => Number)
 	public async getUnreadNotificationCount(
-		@Args('input') input: NotificationInquiry,
+		@Args('input', { nullable: true }) input: NotificationInquiry,
 		@AuthUser('_id') userId: ObjectId,
 	): Promise<number> {
 		console.log('Query: getUnreadNotificationCount');

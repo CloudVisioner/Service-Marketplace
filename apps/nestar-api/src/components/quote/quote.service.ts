@@ -13,6 +13,7 @@ import { NotificationType, NotificationGroup } from '../../libs/enums/notificati
 import { Order } from '../../libs/dto/order/order';
 import { AcceptQuoteResponse } from '../../libs/dto/quote/accept-quote-response';
 import { ServiceRequest } from '../../libs/dto/service-request/service-request';
+import { UserRole } from '../../libs/enums/user.enum';
 
 @Injectable()
 export class QuoteService {
@@ -304,8 +305,24 @@ export class QuoteService {
 		return result;
 	}
 
-	public async getQuotesByOrganization(orgId: ObjectId): Promise<Quote[]> {
+	public async getQuotesByOrganization(orgId: ObjectId, userId: ObjectId, userRole: string): Promise<Quote[]> {
 		const orgIdObj = shapeIntoMongoObjectId(orgId);
+		const userIdObj = shapeIntoMongoObjectId(userId);
+
+		// Verify organization exists
+		const org = await this.organizationModel.findById(orgIdObj).exec();
+		if (!org) {
+			throw new BadRequestException('Organization not found.');
+		}
+
+		// Check access: Admin can see all, Owner can see their own org's quotes
+		const orgOwnerId = shapeIntoMongoObjectId(org.orgOwnerUserId);
+		const isAdmin = userRole === UserRole.ADMIN;
+		const isOwner = orgOwnerId.equals(userIdObj);
+
+		if (!isAdmin && !isOwner) {
+			throw new BadRequestException('You can only view quotes for organizations you own. Access denied.');
+		}
 
 		const result = await this.quoteModel
 			.aggregate([

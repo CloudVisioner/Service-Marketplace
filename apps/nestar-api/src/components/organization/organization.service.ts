@@ -113,7 +113,7 @@ export class OrganizationService {
 		}
 	}
 
-	public async getOrganization(orgId: ObjectId, userId?: ObjectId | null): Promise<Organization> {
+	public async getOrganization(orgId: ObjectId, userId?: ObjectId | null, userRole?: string): Promise<Organization> {
 		const orgIdObj = shapeIntoMongoObjectId(orgId);
 
 		const result = await this.organizationModel
@@ -138,6 +138,19 @@ export class OrganizationService {
 		}
 
 		const org = result[0];
+
+		// Check access level: Admin gets full access, Owner gets full access, Others get public data only
+		const userIdObj = userId ? shapeIntoMongoObjectId(userId) : null;
+		const orgOwnerId = shapeIntoMongoObjectId(org.orgOwnerUserId);
+		const isAdmin = userRole === UserRole.ADMIN;
+		const isOwner = userIdObj && orgOwnerId.equals(userIdObj);
+
+		// If user is not admin and not owner, hide sensitive fields
+		if (!isAdmin && !isOwner) {
+			// Hide sensitive fields for public access
+			org.orgTaxId = null;
+			org.deletedAt = null;
+		}
 
 		// Populate meLiked if user is authenticated
 		if (userId) {

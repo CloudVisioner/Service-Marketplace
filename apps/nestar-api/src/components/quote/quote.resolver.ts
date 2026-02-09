@@ -72,16 +72,16 @@ export class QuoteResolver {
 		return await this.quoteService.getQuotesByRequest(requestIdObj, userId);
 	}
 
-	@Roles(UserRole.PROVIDER)
-	@UseGuards(AuthGuard, RolesGuard)
+	@UseGuards(AuthGuard)
 	@Query(() => [Quote])
 	public async getQuotesByOrganization(
 		@Args('orgId') orgId: string,
 		@AuthUser('_id') userId: ObjectId,
+		@AuthUser('userRole') userRole: string,
 	): Promise<Quote[]> {
 		console.log('Query: getQuotesByOrganization');
 		const orgIdObj = shapeIntoMongoObjectId(orgId);
-		return await this.quoteService.getQuotesByOrganization(orgIdObj);
+		return await this.quoteService.getQuotesByOrganization(orgIdObj, userId, userRole);
 	}
 
 }
