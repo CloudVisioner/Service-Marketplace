@@ -39,4 +39,14 @@ export class NotificationResolver {
 		console.log('Mutation: markAllNotificationsAsRead');
 		return await this.notificationService.markAllAsRead(userId);
 	}
+
+	@UseGuards(AuthGuard)
+	@Query(() => Number)
+	public async getUnreadNotificationCount(
+		@Args('input') input: NotificationInquiry,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<number> {
+		console.log('Query: getUnreadNotificationCount');
+		return await this.notificationService.getUnreadCount(userId, input);
+	}
 }

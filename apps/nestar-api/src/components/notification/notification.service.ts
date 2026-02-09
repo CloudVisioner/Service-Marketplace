@@ -161,4 +161,22 @@ export class NotificationService {
 
 		return result.modifiedCount;
 	}
+
+	public async getUnreadCount(userId: ObjectId, input?: NotificationInquiry): Promise<number> {
+		const match: T = {
+			receiverUserId: userId,
+			notificationStatus: NotificationStatus.WAIT,
+		};
+
+		// Apply search filters if provided
+		if (input?.search) {
+			if (input.search.notificationType) {
+				match.notificationType = input.search.notificationType;
+			}
+		}
+
+		const count = await this.notificationModel.countDocuments(match).exec();
+
+		return count;
+	}
 }

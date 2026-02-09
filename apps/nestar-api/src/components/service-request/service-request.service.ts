@@ -28,7 +28,7 @@ export class ServiceRequestService {
 				throw new BadRequestException('Only BUYER users can create service requests.');
 			}
 
-			// Verify the buyer organization exists
+			// Verify the specific buyer organization exists and user owns it
 			const orgIdObj = shapeIntoMongoObjectId(input.reqBuyerOrgId);
 			const org = await this.organizationModel.findById(orgIdObj).exec();
 
@@ -36,16 +36,53 @@ export class ServiceRequestService {
 				throw new BadRequestException('Organization not found.');
 			}
 
-			// Verify user owns the organization
+			// Verify user owns the SPECIFIC organization they're trying to use
 			const orgOwnerId = shapeIntoMongoObjectId(org.orgOwnerUserId);
 			const userIdObj = shapeIntoMongoObjectId(userId);
 			if (!orgOwnerId.equals(userIdObj)) {
-				throw new BadRequestException('You are not the owner of this organization.');
+				throw new BadRequestException(
+					'You do not own this organization. You can only create service requests for organizations you own.',
+				);
 			}
 
 			// Rule: Only BUYER organizations can create service requests
 			if (org.orgType !== 'BUYER') {
 				throw new BadRequestException('Only BUYER organizations can create service requests.');
+			}
+
+			// Check for duplicate service request: prevent same title for any user
+			// Escape special regex characters in the title
+			const escapedTitle = input.reqTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			
+			// First check if the same user already has this title
+			const myExistingServiceRequest = await this.serviceRequestModel
+				.findOne({
+					reqCreatedByUserId: userIdObj,
+					reqBuyerOrgId: orgIdObj,
+					reqTitle: { $regex: new RegExp(`^${escapedTitle}$`, 'i') }, // Case-insensitive exact match
+					reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.IN_PROGRESS] }, // Only check active requests
+				})
+				.exec();
+
+			if (myExistingServiceRequest) {
+				throw new BadRequestException(
+					`You already have an active service request with the title "${input.reqTitle}". Please use the existing request or choose a different title.`,
+				);
+			}
+
+			// Then check if any other user has created a service request with the same title
+			const otherUserServiceRequest = await this.serviceRequestModel
+				.findOne({
+					reqTitle: { $regex: new RegExp(`^${escapedTitle}$`, 'i') }, // Case-insensitive exact match
+					reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.IN_PROGRESS] }, // Only check active requests
+					reqCreatedByUserId: { $ne: userIdObj }, // Different user
+				})
+				.exec();
+
+			if (otherUserServiceRequest) {
+				throw new BadRequestException(
+					`A service request with the title "${input.reqTitle}" already exists and is currently active. Please choose a different title to avoid confusion.`,
+				);
 			}
 
 			const serviceRequestData = {
@@ -271,8 +308,81 @@ export class ServiceRequestService {
 		return result[0];
 	}
 
-	public async updateServiceRequestStatus(requestId: ObjectId, status: ServiceRequestStatus): Promise<ServiceRequest> {
+	public async updateServiceRequestStatus(
+		requestId: ObjectId,
+		status: ServiceRequestStatus,
+		userId: ObjectId,
+		userRole: string,
+	): Promise<ServiceRequest> {
 		const requestIdObj = shapeIntoMongoObjectId(requestId);
+
+		// Fetch the service request to check ownership
+		const serviceRequest = await this.serviceRequestModel.findById(requestIdObj).exec();
+		if (!serviceRequest) {
+			throw new BadRequestException(Message.NO_DATA_FOUND);
+		}
+
+		const currentStatus = serviceRequest.reqStatus;
+
+		// Validate status transitions based on lifecycle
+		if (userRole === 'BUYER') {
+			// Get the organization that owns the service request
+			const buyerOrgId = shapeIntoMongoObjectId(serviceRequest.reqBuyerOrgId);
+			const org = await this.organizationModel.findById(buyerOrgId).exec();
+
+			if (!org) {
+				throw new BadRequestException('Organization not found.');
+			}
+
+			// Verify user owns the organization
+			const orgOwnerId = shapeIntoMongoObjectId(org.orgOwnerUserId);
+			const userIdObj = shapeIntoMongoObjectId(userId);
+			if (!orgOwnerId.equals(userIdObj)) {
+				throw new BadRequestException('You can only update service requests from your own organization.');
+			}
+
+			// Enforce lifecycle transitions for BUYER
+			// Valid transitions:
+			// OPEN → IN_PROGRESS (handled automatically when quote is accepted)
+			// IN_PROGRESS → CLOSED (buyer marks work as done)
+			// OPEN → CANCELLED (buyer cancels before accepting quote)
+			// IN_PROGRESS → CANCELLED (buyer cancels during work)
+
+			if (currentStatus === status) {
+				throw new BadRequestException(`Service request is already ${status}.`);
+			}
+
+			// Prevent invalid transitions
+			if (currentStatus === ServiceRequestStatus.CLOSED) {
+				throw new BadRequestException('Cannot change status of a CLOSED service request. Contact admin to reopen.');
+			}
+
+			if (currentStatus === ServiceRequestStatus.CANCELLED) {
+				throw new BadRequestException('Cannot change status of a CANCELLED service request.');
+			}
+
+			// Only allow specific transitions
+			const allowedTransitions: Record<ServiceRequestStatus, ServiceRequestStatus[]> = {
+				[ServiceRequestStatus.OPEN]: [ServiceRequestStatus.CANCELLED],
+				[ServiceRequestStatus.IN_PROGRESS]: [ServiceRequestStatus.CLOSED, ServiceRequestStatus.CANCELLED],
+				[ServiceRequestStatus.CLOSED]: [], // No transitions allowed for buyer
+				[ServiceRequestStatus.CANCELLED]: [], // No transitions allowed
+				[ServiceRequestStatus.DRAFT]: [ServiceRequestStatus.OPEN, ServiceRequestStatus.CANCELLED],
+			};
+
+			const allowed = allowedTransitions[currentStatus] || [];
+			if (!allowed.includes(status)) {
+				throw new BadRequestException(
+					`Invalid status transition from ${currentStatus} to ${status}. Allowed transitions: ${allowed.join(', ')}`,
+				);
+			}
+		}
+
+		// ADMIN can update any service request and reopen CLOSED → OPEN
+		if (userRole === 'ADMIN') {
+			// Admin can make any transition, including reopening CLOSED requests
+			// No validation needed for admin
+		}
 
 		const result = await this.serviceRequestModel
 			.findByIdAndUpdate(

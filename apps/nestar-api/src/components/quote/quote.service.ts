@@ -5,10 +5,14 @@ import { Quote } from '../../libs/dto/quote/quote';
 import { QuoteInput } from '../../libs/dto/quote/quote.input';
 import { QuoteStatus } from '../../libs/enums/quote.enum';
 import { ServiceRequestStatus } from '../../libs/enums/service-request.enum';
+import { OrderStatus } from '../../libs/enums/order.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType, NotificationGroup } from '../../libs/enums/notification.enum';
+import { Order } from '../../libs/dto/order/order';
+import { AcceptQuoteResponse } from '../../libs/dto/quote/accept-quote-response';
+import { ServiceRequest } from '../../libs/dto/service-request/service-request';
 
 @Injectable()
 export class QuoteService {
@@ -17,6 +21,7 @@ export class QuoteService {
 		@InjectModel('ServiceRequest') private serviceRequestModel: Model<any>,
 		@InjectModel('Organization') private organizationModel: Model<any>,
 		@InjectModel('User') private userModel: Model<any>,
+		@InjectModel('Order') private orderModel: Model<Order>,
 		private notificationService: NotificationService,
 	) {}
 
@@ -111,7 +116,7 @@ export class QuoteService {
 		}
 	}
 
-	public async acceptQuote(quoteId: ObjectId, buyerId: ObjectId): Promise<Quote> {
+	public async acceptQuote(quoteId: ObjectId, buyerId: ObjectId): Promise<AcceptQuoteResponse> {
 		const quoteIdObj = shapeIntoMongoObjectId(quoteId);
 
 		// Get quote
@@ -129,13 +134,20 @@ export class QuoteService {
 			throw new BadRequestException('You can only accept quotes for your own service requests');
 		}
 
+		// Only OPEN service requests can accept quotes (lifecycle rule)
+		if (serviceRequest.reqStatus !== ServiceRequestStatus.OPEN) {
+			throw new BadRequestException(
+				`Cannot accept quote. Service request is ${serviceRequest.reqStatus}. Only OPEN service requests can accept quotes.`,
+			);
+		}
+
 		// Check if quote is still pending
 		if (quote.quoteStatus !== QuoteStatus.PENDING) {
 			throw new BadRequestException('Quote is not in pending status');
 		}
 
 		// Update quote status to ACCEPTED
-		const result = await this.quoteModel
+		const acceptedQuote = await this.quoteModel
 			.findByIdAndUpdate(
 				quoteIdObj,
 				{ quoteStatus: QuoteStatus.ACCEPTED },
@@ -143,11 +155,11 @@ export class QuoteService {
 			)
 			.exec();
 
-		if (!result) {
+		if (!acceptedQuote) {
 			throw new InternalServerErrorException(Message.UPDATE_FAILED);
 		}
 
-		// Reject all other quotes for this service request
+		// Reject all other quotes for this service request (lock other quotes)
 		await this.quoteModel.updateMany(
 			{
 				quoteServiceReqId: quote.quoteServiceReqId,
@@ -157,24 +169,47 @@ export class QuoteService {
 			{ quoteStatus: QuoteStatus.REJECTED },
 		);
 
-		// Update service request status to IN_PROGRESS
-		await this.serviceRequestModel.findByIdAndUpdate(quote.quoteServiceReqId, {
-			reqStatus: 'IN_PROGRESS',
+		// Update service request status to IN_PROGRESS (automatic transition when quote is accepted)
+		const updatedServiceRequest = await this.serviceRequestModel
+			.findByIdAndUpdate(
+				quote.quoteServiceReqId,
+				{ reqStatus: ServiceRequestStatus.IN_PROGRESS },
+				{ new: true },
+			)
+			.exec();
+
+		if (!updatedServiceRequest) {
+			throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		}
+
+		// Create new Order/Project linking buyer → accepted provider → accepted quote
+		const newOrder = await this.orderModel.create({
+			orderBuyerOrgId: serviceRequest.reqBuyerOrgId,
+			orderProviderOrgId: quote.quoteProviderOrgId,
+			orderServiceReqId: quote.quoteServiceReqId,
+			orderQuoteId: quoteIdObj,
+			orderCreatedByUserId: buyerId,
+			orderStatus: OrderStatus.NEW,
+			orderAmount: quote.quoteAmount,
 		});
 
-		// Create notification for provider
+		// Create notification for provider - work can start
 		await this.notificationService.createNotification({
 			notificationType: NotificationType.QUOTE_ACCEPTED,
-			notificationGroup: NotificationGroup.QUOTE,
+			notificationGroup: NotificationGroup.ORDER,
 			notificationTitle: 'Quote Accepted',
-			notificationDesc: `Your quote has been accepted for service request: ${serviceRequest.reqTitle}`,
+			notificationDesc: `Your quote was accepted! Order #${newOrder._id.toString().slice(-6)}`,
 			senderUserId: buyerId,
 			receiverUserId: quote.quoteCreatedByUserId,
 			organizationId: quote.quoteProviderOrgId,
 			serviceRequestId: quote.quoteServiceReqId,
 		});
 
-		return result;
+		return {
+			quote: acceptedQuote,
+			serviceRequest: updatedServiceRequest,
+			order: newOrder,
+		};
 	}
 
 	public async rejectQuote(quoteId: ObjectId, buyerId: ObjectId): Promise<Quote> {
@@ -190,6 +225,20 @@ export class QuoteService {
 		const serviceRequest = await this.serviceRequestModel.findById(quote.quoteServiceReqId).exec();
 		if (!serviceRequest || serviceRequest.reqCreatedByUserId.toString() !== buyerId.toString()) {
 			throw new BadRequestException('You can only reject quotes for your own service requests');
+		}
+
+		// Block rejecting ACCEPTED quotes - use cancelOrder() API instead
+		if (quote.quoteStatus === QuoteStatus.ACCEPTED) {
+			throw new BadRequestException(
+				'Cannot reject an accepted quote. This quote has already been accepted and an order has been created. Use the cancelOrder API if you need to cancel the order.',
+			);
+		}
+
+		// Only allow rejecting PENDING quotes
+		if (quote.quoteStatus !== QuoteStatus.PENDING) {
+			throw new BadRequestException(
+				`Cannot reject quote. Quote status is ${quote.quoteStatus}. Only PENDING quotes can be rejected.`,
+			);
 		}
 
 		// Update quote status to REJECTED

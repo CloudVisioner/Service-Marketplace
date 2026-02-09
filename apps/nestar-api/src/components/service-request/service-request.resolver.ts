@@ -58,16 +58,18 @@ export class ServiceRequestResolver {
 		return await this.serviceRequestService.getAllServiceRequests(input);
 	}
 
-	@Roles(UserRole.BUYER)
+	@Roles(UserRole.BUYER, UserRole.ADMIN)
 	@UseGuards(AuthGuard, RolesGuard)
 	@Mutation(() => ServiceRequest)
 	public async updateServiceRequestStatus(
 		@Args('requestId') requestId: string,
 		@Args('status', { type: () => ServiceRequestStatus }) status: ServiceRequestStatus,
+		@AuthUser('_id') userId: ObjectId,
+		@AuthUser('userRole') userRole: string,
 	): Promise<ServiceRequest> {
 		console.log('Mutation: updateServiceRequestStatus');
 		const requestIdObj = shapeIntoMongoObjectId(requestId);
-		return await this.serviceRequestService.updateServiceRequestStatus(requestIdObj, status);
+		return await this.serviceRequestService.updateServiceRequestStatus(requestIdObj, status, userId, userRole);
 	}
 
 }

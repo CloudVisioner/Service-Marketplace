@@ -8,6 +8,7 @@ import { OrganizationModule } from './organization/organization.module';
 import { QuoteModule } from './quote/quote.module';
 import { ServiceRequestModule } from './service-request/service-request.module';
 import { NotificationModule } from './notification/notification.module';
+import { OrderModule } from './order/order.module';
 
 @Module({
 	imports: [
@@ -20,6 +21,7 @@ import { NotificationModule } from './notification/notification.module';
 		QuoteModule,
 		ServiceRequestModule,
 		NotificationModule,
+		OrderModule,
 	],
 	providers: [],
 })

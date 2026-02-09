@@ -13,12 +13,28 @@ export class LikeService {
 	constructor(
 		@InjectModel('Like') private readonly likeModel: Model<Like>,
 		@InjectModel('Organization') private readonly organizationModel: Model<any>,
-		@InjectModel('User') private readonly userModel: Model<any>,
 	) {}
 
 	public async toggleLike(input: LikeInput): Promise<number> {
+		// Only ORGANIZATION likes are allowed
+		if (input.likeGroup !== LikeGroup.ORGANIZATION) {
+			throw new BadRequestException('Only SERVICE_PROVIDER organizations can be liked.');
+		}
+
 		const userIdObj = shapeIntoMongoObjectId(input.userId);
 		const likeRefIdObj = shapeIntoMongoObjectId(input.likeRefId);
+
+		// Verify it's an organization and it's a SERVICE_PROVIDER
+		const org = await this.organizationModel.findById(likeRefIdObj).exec();
+		if (!org) {
+			throw new BadRequestException('Organization not found.');
+		}
+
+		// Rule: Only SERVICE_PROVIDER organizations can be liked
+		if (org.orgType !== 'SERVICE_PROVIDER') {
+			throw new BadRequestException('Only SERVICE_PROVIDER organizations can be liked.');
+		}
+
 		const search: T = { userId: userIdObj, likeRefId: likeRefIdObj };
 		
 		const exist = await this.likeModel.findOne(search).exec();
@@ -32,7 +48,7 @@ export class LikeService {
 				await this.likeModel.create({
 					userId: userIdObj,
 					likeRefId: likeRefIdObj,
-					likeGroup: input.likeGroup,
+					likeGroup: LikeGroup.ORGANIZATION,
 				});
 			} catch (err: any) {
 				if (err.code === 11000) {
@@ -47,7 +63,7 @@ export class LikeService {
 			}
 		}
 
-		await this.updateTotalLikesCount(input.likeGroup, likeRefIdObj, modifier);
+		await this.updateTotalLikesCount(LikeGroup.ORGANIZATION, likeRefIdObj, modifier);
 		return modifier;
 	}
 
@@ -55,17 +71,11 @@ export class LikeService {
 		try {
 			const actualCount = await this.getTotalLikesCount(likeGroup, likeRefId);
 			
-			switch (likeGroup) {
-				case LikeGroup.ORGANIZATION:
-					await this.organizationModel.findByIdAndUpdate(likeRefId, {
-						$set: { orgTotalLikes: actualCount },
-					});
-					break;
-				case LikeGroup.USER:
-					await this.userModel.findByIdAndUpdate(likeRefId, {
-						$set: { userTotalLikes: actualCount },
-					});
-					break;
+			// Only ORGANIZATION likes are supported
+			if (likeGroup === LikeGroup.ORGANIZATION) {
+				await this.organizationModel.findByIdAndUpdate(likeRefId, {
+					$set: { orgTotalLikes: actualCount },
+				});
 			}
 		} catch (err) {
 			// Don't throw error - the like was already toggled

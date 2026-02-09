@@ -68,16 +68,7 @@ export class UserResolver {
 		return await this.userService.getUser(userId, targetId);
 	}
 
-	@UseGuards(AuthGuard)
-	@Mutation(() => User)
-	public async likeTargetUser(
-		@Args('userId') input: string,
-		@AuthUser('_id') userId: ObjectId,
-	): Promise<User> {
-		console.log('Mutation: likeTargetUser');
-		const likeRefId = shapeIntoMongoObjectId(input);
-		return await this.userService.likeTargetUser(userId, likeRefId);
-	}
+	// Removed: likeTargetUser mutation - Users cannot be liked, only SERVICE_PROVIDER organizations can be liked
 
 	//** ADMIN **//
 	@Roles(UserRole.ADMIN)

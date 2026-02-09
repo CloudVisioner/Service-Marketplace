@@ -3,6 +3,8 @@ import { UseGuards } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { Quote } from '../../libs/dto/quote/quote';
 import { QuoteInput } from '../../libs/dto/quote/quote.input';
+import { AcceptQuoteInput } from '../../libs/dto/quote/accept-quote.input';
+import { AcceptQuoteResponse } from '../../libs/dto/quote/accept-quote-response';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -32,14 +34,19 @@ export class QuoteResolver {
 
 	@Roles(UserRole.BUYER)
 	@UseGuards(AuthGuard, RolesGuard)
-	@Mutation(() => Quote)
+	@Mutation(() => AcceptQuoteResponse)
 	public async acceptQuote(
 		@Args('quoteId') quoteId: string,
 		@AuthUser('_id') userId: ObjectId,
-	): Promise<Quote> {
+	): Promise<AcceptQuoteResponse> {
 		console.log('Mutation: acceptQuote');
 		const quoteIdObj = shapeIntoMongoObjectId(quoteId);
-		return await this.quoteService.acceptQuote(quoteIdObj, userId);
+		const result = await this.quoteService.acceptQuote(quoteIdObj, userId);
+		return {
+			quote: result.quote,
+			serviceRequest: result.serviceRequest,
+			order: result.order,
+		};
 	}
 
 	@Roles(UserRole.BUYER)

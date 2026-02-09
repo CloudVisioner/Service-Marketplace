@@ -6,6 +6,7 @@ export enum NotificationType {
 	QUOTE_ACCEPTED = 'QUOTE_ACCEPTED',
 	QUOTE_REJECTED = 'QUOTE_REJECTED',
 	QUOTE_EXPIRED = 'QUOTE_EXPIRED',
+	ORDER_CANCELLED = 'ORDER_CANCELLED',
 	FOLLOW = 'FOLLOW',
 }
 registerEnumType(NotificationType, {
@@ -25,6 +26,7 @@ export enum NotificationGroup {
 	ORGANIZATION = 'ORGANIZATION',
 	SERVICE_REQUEST = 'SERVICE_REQUEST',
 	QUOTE = 'QUOTE',
+	ORDER = 'ORDER',
 }
 registerEnumType(NotificationGroup, {
 	name: 'NotificationGroup',

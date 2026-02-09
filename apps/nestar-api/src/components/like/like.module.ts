@@ -3,7 +3,6 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { LikeService } from './like.service';
 import LikeSchema from '../../schemas/Like.model';
 import OrganizationSchema from '../../schemas/Organization.model';
-import UserSchema from '../../schemas/User.model';
 
 @Module({
 	imports: [
@@ -15,10 +14,6 @@ import UserSchema from '../../schemas/User.model';
 			{
 				name: 'Organization',
 				schema: OrganizationSchema,
-			},
-			{
-				name: 'User',
-				schema: UserSchema,
 			},
 		]),
 	],

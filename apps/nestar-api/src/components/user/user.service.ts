@@ -231,9 +231,8 @@ export class UserService {
 				// Increment userTotalViews
 				await this.userModel.findByIdAndUpdate(targetId, { $inc: { userTotalViews: 1 } });
 			}
-			// meLiked
-			const likeInput = { userId: userId, likeRefId: targetId, likeGroup: LikeGroup.USER };
-			result.meLiked = await this.likeService.checkLikeExistence(likeInput);
+			// Users cannot be liked - removed
+			result.meLiked = [];
 
 			result.meFollowed = await this.checkSubscription(userId, targetId);
 		}
@@ -245,60 +244,7 @@ export class UserService {
 		return result ? [{ followerUserId: followerId, followedOrgId: followingId, myFollowing: true }] : [];
 	}
 
-	public async likeTargetUser(userId: ObjectId, likeRefId: ObjectId): Promise<User> {
-		// Verify user exists first
-		const userExists = await this.userModel.findOne({ _id: likeRefId, userStatus: UserStatus.ACTIVE }).exec();
-		if (!userExists) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
-
-		const input: LikeInput = {
-			userId: userId,
-			likeRefId: likeRefId,
-			likeGroup: LikeGroup.USER,
-		};
-
-		// Check if like already exists before toggling
-		const likeExists = await this.likeService.checkLikeExistence(input);
-		const wasLiked = likeExists.length > 0;
-
-		// Toggle the like (this updates userTotalLikes in the database)
-		await this.likeService.toggleLike(input);
-		
-		// Recalculate total likes from actual likes in database to ensure accuracy
-		const actualLikeCount = await this.likeService.getTotalLikesCount(LikeGroup.USER, likeRefId);
-		await this.userModel.findByIdAndUpdate(likeRefId, {
-			$set: { userTotalLikes: actualLikeCount },
-		});
-		
-		// Fetch the user AFTER toggling to get updated userTotalLikes count
-		const target = await this.userModel
-			.aggregate([
-				{ $match: { _id: likeRefId, userStatus: UserStatus.ACTIVE } },
-				{
-					$lookup: {
-						from: 'organizations',
-						localField: 'userOrganizationId',
-						foreignField: '_id',
-						as: 'userOrganization',
-					},
-				},
-				{
-					$unwind: { path: '$userOrganization', preserveNullAndEmptyArrays: true },
-				},
-			])
-			.exec();
-
-		if (!target.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
-
-		const result = target[0];
-		
-		// Populate meLiked to show if current user liked this target user
-		result.meLiked = await this.likeService.checkLikeExistence(input);
-		
-		// Populate meFollowed to show if current user follows this target user
-		result.meFollowed = await this.checkSubscription(userId, likeRefId);
-		
-		return result;
-	}
+	// Removed: likeTargetUser - Users cannot be liked, only SERVICE_PROVIDER organizations can be liked
 
 	public async getAllUsersByAdmin(input: UsersInquiry): Promise<Users> {
 		const { userStatus, userRole, text } = input.search;
