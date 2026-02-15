@@ -27,9 +27,6 @@ export class User {
 
 	userPassword: string;
 
-	@Field(() => String, { nullable: true })
-	userFullName?: string;
-
 	@Field(() => String)
 	userNick: string;
 
@@ -76,6 +73,15 @@ export class User {
 
 	@Field(() => String, { nullable: true })
 	accessToken?: string;
+}
+
+@ObjectType()
+export class SignupResponse {
+	@Field(() => String)
+	accessToken: string;
+
+	@Field(() => User)
+	user: User;
 }
 
 @ObjectType()

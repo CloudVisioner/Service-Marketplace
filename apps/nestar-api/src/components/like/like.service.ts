@@ -73,9 +73,9 @@ export class LikeService {
 			
 			// Only ORGANIZATION likes are supported
 			if (likeGroup === LikeGroup.ORGANIZATION) {
-				await this.organizationModel.findByIdAndUpdate(likeRefId, {
-					$set: { orgTotalLikes: actualCount },
-				});
+					await this.organizationModel.findByIdAndUpdate(likeRefId, {
+						$set: { orgTotalLikes: actualCount },
+					});
 			}
 		} catch (err) {
 			// Don't throw error - the like was already toggled

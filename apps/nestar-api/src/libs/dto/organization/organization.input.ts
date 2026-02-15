@@ -1,6 +1,7 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsNotEmpty, IsOptional, Length, Min } from 'class-validator';
 import { OrganizationType, OrganizationStatus } from '../../enums/organization.enum';
+import { Category, SubCategory } from '../../enums/category.enum';
 
 @InputType()
 export class OrganizationInput {
@@ -64,4 +65,78 @@ export class OrganizationInquiry {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	text?: string;
+}
+
+@InputType()
+export class ProviderCategoryInput {
+	@IsNotEmpty()
+	@Field(() => Category)
+	categoryId: Category;
+
+	@IsOptional()
+	@Min(1)
+	@Field(() => Int, { nullable: true })
+	page?: number;
+
+	@IsOptional()
+	@Min(1)
+	@Field(() => Int, { nullable: true })
+	limit?: number;
+
+	@IsOptional()
+	@Field(() => SubCategory, { nullable: true })
+	subCategory?: SubCategory;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	location?: string;
+
+	@IsOptional()
+	@Field(() => Number, { nullable: true })
+	minBudget?: number;
+
+	@IsOptional()
+	@Field(() => Number, { nullable: true })
+	maxBudget?: number;
+}
+
+@InputType()
+export class ProviderSortInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	sortBy: string; // 'rating', 'projects', 'responseTime', 'startingRate'
+
+	@IsOptional()
+	@Field(() => Category, { nullable: true })
+	categoryId?: Category;
+
+	@IsOptional()
+	@Field(() => SubCategory, { nullable: true })
+	subCategory?: SubCategory;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	location?: string;
+
+	@IsOptional()
+	@Min(1)
+	@Field(() => Int, { nullable: true })
+	page?: number;
+
+	@IsOptional()
+	@Min(1)
+	@Field(() => Int, { nullable: true })
+	limit?: number;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	searchQuery?: string;
+
+	@IsOptional()
+	@Field(() => Number, { nullable: true })
+	minBudget?: number;
+
+	@IsOptional()
+	@Field(() => Number, { nullable: true })
+	maxBudget?: number;
 }

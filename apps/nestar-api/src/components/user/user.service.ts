@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { User, Users } from '../../libs/dto/user/user';
-import { LoginInput, UserInput, UsersInquiry } from '../../libs/dto/user/user.input';
+import { User, Users, SignupResponse } from '../../libs/dto/user/user';
+import { LoginInput, UserInput, UsersInquiry, SignupInput } from '../../libs/dto/user/user.input';
 import { UserStatus, UserRole, UserAuthType } from '../../libs/enums/user.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
@@ -23,49 +23,37 @@ export class UserService {
 		private likeService: LikeService,
 	) {}
 
-	public async signup(input: UserInput): Promise<User> {
-		// Validate that either email or phone is provided
-		if (!input.userEmail && !input.userPhone) {
-			throw new BadRequestException('Either email or phone number is required');
+	public async signup(input: SignupInput): Promise<SignupResponse> {
+		// Map SignupInput to UserInput format
+		// Default role to BUYER if not provided
+		const userInput: UserInput = {
+			userEmail: input.userEmail,
+			userNick: input.userNick,
+			userPassword: input.userPassword,
+			userRole: input.userRole || UserRole.BUYER,
+			userAuthType: UserAuthType.EMAIL,
+		};
+
+		// Check for duplicate email
+		const existingEmail = await this.userModel.findOne({ userEmail: userInput.userEmail }).exec();
+		if (existingEmail) {
+			throw new BadRequestException('Email already registered. Please use a different email or login.');
 		}
 
-		// Check for duplicate userNick
-		const existingNick = await this.userModel.findOne({ userNick: input.userNick }).exec();
+		// Check for duplicate user nick
+		const existingNick = await this.userModel.findOne({ userNick: userInput.userNick }).exec();
 		if (existingNick) {
-			throw new BadRequestException('Username already exists. Please choose a different username.');
+			throw new BadRequestException('User nick already exists. Please use a different user nick.');
 		}
 
-		// Check for duplicate email if provided
-		if (input.userEmail) {
-			const existingEmail = await this.userModel.findOne({ userEmail: input.userEmail }).exec();
-			if (existingEmail) {
-				throw new BadRequestException('Email already registered. Please use a different email or login.');
-			}
-		}
-
-		// Check for duplicate phone if provided
-		if (input.userPhone) {
-			const existingPhone = await this.userModel.findOne({ userPhone: input.userPhone }).exec();
-			if (existingPhone) {
-				throw new BadRequestException('Phone number already registered. Please use a different phone or login.');
-			}
-		}
-
-		// Set default auth type if not provided
-		if (!input.userAuthType) {
-			input.userAuthType = input.userEmail ? UserAuthType.EMAIL : UserAuthType.PHONE;
-		}
-
-		// Convert organizationId string to ObjectId if provided
-		const signupData: any = { ...input };
-		if (input.userOrganizationId) {
-			signupData.userOrganizationId = shapeIntoMongoObjectId(input.userOrganizationId);
-		}
-
-		signupData.userPassword = await this.authService.hashPassword(input.userPassword);
+		// Convert to signup data
+		const signupData: any = { ...userInput };
+		signupData.userPassword = await this.authService.hashPassword(userInput.userPassword);
 		
 		try {
+			console.log('Creating user with data:', { userEmail: signupData.userEmail, userNick: signupData.userNick, userRole: signupData.userRole });
 			const createdUser = await this.userModel.create(signupData);
+			console.log('User created successfully:', createdUser._id);
 			
 			// Fetch full user data with organization populated - using lean() to get plain object
 			const fullUser = await this.userModel
@@ -85,20 +73,42 @@ export class UserService {
 				])
 				.exec();
 
+			// If aggregation fails, fetch user directly as fallback
+			let user;
 			if (!fullUser.length) {
-				throw new InternalServerErrorException(Message.CREATE_FAILED);
+				console.warn('Aggregation returned empty, fetching user directly');
+				const directUser = await this.userModel.findById(createdUser._id).exec();
+				if (!directUser) {
+					throw new InternalServerErrorException(Message.CREATE_FAILED);
+				}
+				user = directUser.toObject();
+				user.userOrganization = null;
+			} else {
+				user = fullUser[0];
 			}
 
-			const result = fullUser[0];
-			result.accessToken = await this.authService.createUserToken(result);
-			return result;
+			const accessToken = await this.authService.createUserToken(user);
+			
+			return {
+				accessToken,
+				user,
+			};
 		} catch (err) {
 			console.log('Error, Service.model:', err.message);
 			// If it's a validation error we already handled, re-throw it
 			if (err instanceof BadRequestException) {
 				throw err;
 			}
-			// Otherwise it might be a duplicate key error from MongoDB
+			// Check for MongoDB duplicate key error
+			if (err.code === 11000 || err.message?.includes('duplicate key')) {
+				const field = err.keyPattern ? Object.keys(err.keyPattern)[0] : 'field';
+				throw new BadRequestException(`${field} already exists. Please use a different value.`);
+			}
+			// Otherwise it might be a validation error from MongoDB schema
+			if (err.message) {
+				throw new BadRequestException(err.message);
+			}
+			// Fallback to generic error
 			throw new BadRequestException(Message.USED_USER_NICK_OR_EMAIL);
 		}
 	}

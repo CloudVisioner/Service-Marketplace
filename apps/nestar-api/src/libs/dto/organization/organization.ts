@@ -1,6 +1,7 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import mongoose from 'mongoose';
 import { OrganizationType, OrganizationStatus } from '../../enums/organization.enum';
+import { Category, SubCategory } from '../../enums/category.enum';
 import { User } from '../user/user';
 import { TotalCounter } from '../common/common';
 import { MeLiked } from '../like/like';
@@ -60,6 +61,67 @@ export class Organization {
 
 	@Field(() => String, { nullable: true })
 	orgTaxId?: string;
+
+	// Provider marketplace fields
+	@Field(() => Category, { nullable: true })
+	categoryId?: Category;
+
+	@Field(() => SubCategory, { nullable: true })
+	subCategory?: SubCategory;
+
+	@Field(() => String, { nullable: true })
+	serviceTitle?: string;
+
+	@Field(() => Number, { nullable: true })
+	startingRate?: number;
+
+	@Field(() => Int, { nullable: true })
+	establishmentYear?: number;
+
+	@Field(() => Int, { nullable: true })
+	teamSize?: number;
+
+	@Field(() => [String], { nullable: true })
+	industries?: string[];
+
+	@Field(() => Number, { nullable: true })
+	minProjectSize?: number;
+
+	@Field(() => String, { nullable: true })
+	bio?: string;
+
+	@Field(() => String, { nullable: true })
+	avatar?: string;
+
+	@Field(() => [String], { nullable: true })
+	badges?: string[];
+
+	@Field(() => String, { nullable: true })
+	color?: string;
+
+	@Field(() => String, { nullable: true })
+	location?: string;
+
+	@Field(() => String, { nullable: true })
+	flag?: string;
+
+	@Field(() => Int, { nullable: true })
+	reviewsCount?: number;
+
+	@Field(() => String, { nullable: true })
+	email?: string;
+
+	@Field(() => String, { nullable: true })
+	phone?: string;
+
+	@Field(() => String, { nullable: true })
+	linkedIn?: string;
+
+	@Field(() => String, { nullable: true })
+	twitter?: string;
+
+	@Field(() => String, { nullable: true })
+	github?: string;
 
 	@Field(() => Date, { nullable: true })
 	deletedAt?: Date;

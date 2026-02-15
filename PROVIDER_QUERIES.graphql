@@ -1,0 +1,214 @@
+# ============================================
+# PROVIDER MARKETPLACE QUERIES
+# ============================================
+
+# ============================================
+# 1. GET PROVIDERS BY CATEGORY
+# ============================================
+# Use Case: Category page listing
+# Returns: Provider cards (name, rating, projects, location)
+
+query GetProvidersByCategory($input: ProviderCategoryInput!) {
+  getProvidersByCategory(input: $input) {
+    list {
+      _id
+      orgName
+      orgDescription
+      orgAverageRating
+      reviewsCount
+      orgTotalProjects
+      orgResponseTimeAvg
+      startingRate
+      orgCountry
+      orgCity
+      location
+      flag
+      categoryId
+      subCategory
+      serviceTitle
+      avatar
+      badges
+      color
+      orgVerified
+      orgLogoImages
+      orgTotalLikes
+      orgTotalViews
+      industries
+      createdAt
+    }
+    metaCounter {
+      total
+    }
+  }
+}
+
+# Variables Example (Minimal):
+# {
+#   "input": {
+#     "categoryId": "IT_AND_SOFTWARE"
+#   }
+# }
+
+# Variables Example (Complete):
+# {
+#   "input": {
+#     "categoryId": "IT_AND_SOFTWARE",
+#     "subCategory": "WEB_APP_DEVELOPMENT",
+#     "location": "USA",
+#     "minBudget": 1000,
+#     "maxBudget": 10000,
+#     "page": 1,
+#     "limit": 12
+#   }
+# }
+
+# ============================================
+# 2. GET PROVIDER DETAIL
+# ============================================
+# Use Case: Provider profile/detail page
+# Returns: Full profile + portfolio + contact info (if logged in)
+
+query GetProviderDetail($orgId: String!) {
+  getProviderDetail(orgId: $orgId) {
+    _id
+    orgName
+    orgDescription
+    bio
+    orgAverageRating
+    reviewsCount
+    orgTotalProjects
+    orgResponseTimeAvg
+    startingRate
+    minProjectSize
+    establishmentYear
+    teamSize
+    industries
+    orgCountry
+    orgCity
+    location
+    flag
+    categoryId
+    subCategory
+    serviceTitle
+    avatar
+    badges
+    color
+    orgVerified
+    orgLogoImages
+    orgTotalLikes
+    orgTotalViews
+    orgWebsiteUrl
+    orgSkills
+    # Contact info (only shown if logged in)
+    email
+    phone
+    linkedIn
+    twitter
+    github
+    createdAt
+    updatedAt
+    orgOwnerData {
+      _id
+      userNick
+      userEmail
+      userRole
+    }
+  }
+}
+
+# Variables Example:
+# {
+#   "orgId": "69864f6efcf99b93d1eca978"
+# }
+
+# ============================================
+# 3. GET PROVIDERS SORTED
+# ============================================
+# Use Case: Filtered/Sorted search with filters
+# Returns: Same card data, sorted (rating, projects, response time)
+
+query GetProvidersSorted($input: ProviderSortInput!) {
+  getProvidersSorted(input: $input) {
+    list {
+      _id
+      orgName
+      orgDescription
+      orgAverageRating
+      reviewsCount
+      orgTotalProjects
+      orgResponseTimeAvg
+      startingRate
+      orgCountry
+      orgCity
+      location
+      flag
+      categoryId
+      subCategory
+      serviceTitle
+      avatar
+      badges
+      color
+      orgVerified
+      orgLogoImages
+      orgTotalLikes
+      orgTotalViews
+      industries
+      createdAt
+    }
+    metaCounter {
+      total
+    }
+  }
+}
+
+# Variables Example (Sort by Rating):
+# {
+#   "input": {
+#     "sortBy": "rating",
+#     "categoryId": "IT_AND_SOFTWARE",
+#     "page": 1,
+#     "limit": 12
+#   }
+# }
+
+# Variables Example (Sort by Projects):
+# {
+#   "input": {
+#     "sortBy": "projects",
+#     "subCategory": "WEB_APP_DEVELOPMENT",
+#     "location": "USA",
+#     "page": 1,
+#     "limit": 12
+#   }
+# }
+
+# Variables Example (Sort by Response Time):
+# {
+#   "input": {
+#     "sortBy": "responseTime",
+#     "categoryId": "IT_AND_SOFTWARE",
+#     "minBudget": 5000,
+#     "maxBudget": 50000,
+#     "page": 1,
+#     "limit": 12
+#   }
+# }
+
+# Variables Example (Sort by Starting Rate with Search):
+# {
+#   "input": {
+#     "sortBy": "startingRate",
+#     "searchQuery": "react nodejs",
+#     "location": "New York",
+#     "page": 1,
+#     "limit": 12
+#   }
+# }
+
+# ============================================
+# SORT OPTIONS:
+# - "rating" - Sort by average rating (highest first)
+# - "projects" - Sort by total projects (most first)
+# - "responseTime" - Sort by response time (fastest first)
+# - "startingRate" - Sort by starting rate (lowest first)
+# ============================================

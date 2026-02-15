@@ -24,10 +24,18 @@ export class AuthService {
     }
 
     public async createUserToken(user: User): Promise<string> {
-        const payload: T = {};
-        Object.keys(user['_doc'] ? user['_doc'] : user).map((ele) => {
-            payload[`${ele}`] = user[`${ele}`];
-        });
+        // Standardize payload structure to ensure consistency between signup and login
+        const userObj = user['_doc'] ? user['_doc'] : user;
+        const payload: T = {
+            _id: userObj._id,
+            userNick: userObj.userNick,
+            userEmail: userObj.userEmail,
+            userRole: userObj.userRole,
+            userStatus: userObj.userStatus,
+            userAuthType: userObj.userAuthType,
+            userOrganizationId: userObj.userOrganizationId || null,
+        };
+        // Remove password if present
         delete payload.userPassword;
         return await this.jwtService.signAsync(payload);
     }

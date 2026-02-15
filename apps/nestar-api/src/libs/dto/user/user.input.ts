@@ -5,7 +5,12 @@ import { availableUserSorts } from '../../config';
 import { Direction } from '../../enums/common.enum';
 
 @InputType()
-export class UserInput {
+export class SignupInput {
+	@IsNotEmpty()
+	@IsEmail()
+	@Field(() => String)
+	userEmail: string;
+
 	@IsNotEmpty()
 	@Length(3, 12)
 	@Field(() => String)
@@ -17,9 +22,26 @@ export class UserInput {
 	userPassword: string;
 
 	@IsOptional()
+	@Field(() => UserRole, { nullable: true })
+	userRole?: UserRole;
+}
+
+@InputType()
+export class UserInput {
+	@IsNotEmpty()
+	@Length(5, 12)
+	@Field(() => String)
+	userPassword: string;
+
+	@IsNotEmpty()
 	@IsEmail()
+	@Field(() => String)
+	userEmail: string;
+
+	@IsOptional()
+	@Length(3, 12)
 	@Field(() => String, { nullable: true })
-	userEmail?: string;
+	userNick?: string;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
@@ -30,12 +52,8 @@ export class UserInput {
 	userAuthType?: UserAuthType;
 
 	@IsOptional()
-	@Field(() => UserRole, { nullable: true })
-	userRole?: UserRole;
-
-	@IsOptional()
-	@Field(() => String, { nullable: true })
-	userFullName?: string;
+	@Field(() => UserRole)
+	userRole: UserRole;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })

@@ -43,7 +43,6 @@ export class UserUpdate {
 	@IsOptional()
 	@Length(3, 100)
 	@Field(() => String, { nullable: true })
-	userFullName?: string;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })

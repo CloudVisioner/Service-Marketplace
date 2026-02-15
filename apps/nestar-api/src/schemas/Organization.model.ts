@@ -102,6 +102,108 @@ const OrganizationSchema = new Schema(
 			index: { unique: true },
 		},
 
+		// Provider marketplace fields
+		categoryId: {
+			type: String,
+			enum: ['IT_AND_SOFTWARE', 'BUSINESS_SERVICES', 'MARKETING_AND_SALES', 'DESIGN_AND_CREATIVE'],
+			index: true,
+		},
+
+		subCategory: {
+			type: String,
+			enum: [
+				'WEB_APP_DEVELOPMENT',
+				'DATA_AND_AI',
+				'SOFTWARE_TESTING_AND_QA',
+				'INFRASTRUCTURE_AND_CLOUD',
+				'ADMIN_AND_VIRTUAL_SUPPORT',
+				'FINANCIAL_AND_LEGAL',
+				'STRATEGY_AND_CONSULTING',
+				'HR_AND_OPERATIONS',
+				'DIGITAL_MARKETING',
+				'SOCIAL_MEDIA_MANAGEMENT',
+				'CONTENT_AND_COPYWRITING',
+				'SALES_AND_LEAD_GEN',
+				'VISUAL_IDENTITY_AND_BRANDING',
+				'UI_UX_AND_WEB_DESIGN',
+				'MOTION_AND_VIDEO',
+				'ILLUSTRATION_AND_PRINT',
+			],
+		},
+
+		serviceTitle: {
+			type: String,
+		},
+
+		startingRate: {
+			type: Number,
+			default: 0,
+		},
+
+		establishmentYear: {
+			type: Number,
+		},
+
+		teamSize: {
+			type: Number,
+			default: 0,
+		},
+
+		industries: {
+			type: [String],
+			default: [],
+		},
+
+		minProjectSize: {
+			type: Number,
+			default: 0,
+		},
+
+		bio: {
+			type: String,
+		},
+
+		avatar: {
+			type: String,
+		},
+
+		badges: {
+			type: [String],
+			default: [],
+		},
+
+		color: {
+			type: String,
+		},
+
+		location: {
+			type: String,
+		},
+
+		flag: {
+			type: String,
+		},
+
+		reviewsCount: {
+			type: Number,
+			default: 0,
+			required: true,
+		},
+
+		email: {
+			type: String,
+		},
+
+		phone: {
+			type: String,
+		},
+
+		socialLinks: {
+			linkedIn: { type: String },
+			twitter: { type: String },
+			github: { type: String },
+		},
+
 		deletedAt: {
 			type: Date,
 		},

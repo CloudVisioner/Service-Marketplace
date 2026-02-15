@@ -2,7 +2,7 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards, BadRequestException } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { Organization, Organizations } from '../../libs/dto/organization/organization';
-import { OrganizationInput, OrganizationInquiry } from '../../libs/dto/organization/organization.input';
+import { OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderSortInput } from '../../libs/dto/organization/organization.input';
 import { OrganizationUpdate } from '../../libs/dto/organization/organization.update';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -96,5 +96,30 @@ export class OrganizationResolver {
 		console.log('Mutation: likeTargetOrganization');
 		const orgIdObj = shapeIntoMongoObjectId(orgId);
 		return await this.organizationService.likeTargetOrganization(userId, orgIdObj);
+	}
+
+	// 1. Get Providers By Category (Public - No Auth Required)
+	@Query(() => Organizations)
+	public async getProvidersByCategory(@Args('input') input: ProviderCategoryInput): Promise<Organizations> {
+		console.log('Query: getProvidersByCategory');
+		return await this.organizationService.getProvidersByCategory(input);
+	}
+
+	// 2. Get Provider Detail (Public - No Auth Required, but shows contact info if logged in)
+	@Query(() => Organization)
+	public async getProviderDetail(
+		@Args('orgId') orgId: string,
+		@AuthUser('_id') userId?: ObjectId | null,
+	): Promise<Organization> {
+		console.log('Query: getProviderDetail');
+		const orgIdObj = shapeIntoMongoObjectId(orgId);
+		return await this.organizationService.getProviderDetail(orgIdObj, userId);
+	}
+
+	// 3. Get Providers Sorted (Public - No Auth Required)
+	@Query(() => Organizations)
+	public async getProvidersSorted(@Args('input') input: ProviderSortInput): Promise<Organizations> {
+		console.log('Query: getProvidersSorted');
+		return await this.organizationService.getProvidersSorted(input);
 	}
 }

@@ -40,15 +40,12 @@ const UserSchema = new Schema(
 			required: true,
 		},
 
-		userFullName: {
-			type: String,
-		},
-
-		userNick: {
-			type: String,
-			required: true,
-			index: true,
-		},
+	userNick: {
+		type: String,
+		required: true,
+		unique: true,
+		index: true,
+	},
 
 		userImage: {
 			type: String,
@@ -86,37 +83,13 @@ const UserSchema = new Schema(
 			required: true,
 		},
 
-		userTotalQuotes: {
-			type: Number,
-			default: 0,
-			required: true,
-		},
+	userTotalQuotes: {
+		type: Number,
+		default: 0,
+		required: true,
+	},
 
-		userTotalFollowers: {
-			type: Number,
-			default: 0,
-			required: true,
-		},
-
-		userTotalFollowing: {
-			type: Number,
-			default: 0,
-			required: true,
-		},
-
-		userTotalLikes: {
-			type: Number,
-			default: 0,
-			required: true,
-		},
-
-		userTotalViews: {
-			type: Number,
-			default: 0,
-			required: true,
-		},
-
-		userOrgCount: {
+	userOrgCount: {
 			type: Number,
 			default: 0,
 			required: true,
@@ -130,6 +103,6 @@ const UserSchema = new Schema(
 );
 
 // Compound indexes for search
-UserSchema.index({ userNick: 'text', userFullName: 'text', userDescription: 'text' });
+UserSchema.index({ userNick: 'text', userDescription: 'text' });
 
 export default UserSchema;

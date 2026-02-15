@@ -1,8 +1,8 @@
 import { Mutation, Resolver, Query, Args } from '@nestjs/graphql';
 import { UserService } from './user.service';
 import { BadRequestException, InternalServerErrorException, UseGuards } from '@nestjs/common';
-import { LoginInput, UserInput, UsersInquiry } from '../../libs/dto/user/user.input';
-import { User, Users } from '../../libs/dto/user/user';
+import { LoginInput, UserInput, UsersInquiry, SignupInput } from '../../libs/dto/user/user.input';
+import { User, Users, SignupResponse } from '../../libs/dto/user/user';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthUser } from '../auth/decorators/authUser.decorator';
 import type { ObjectId } from 'mongoose';
@@ -20,8 +20,8 @@ import { Message } from '../../libs/enums/common.enum';
 export class UserResolver {
 	constructor(private readonly userService: UserService) {}
 
-	@Mutation(() => User)
-	public async signup(@Args('input') input: UserInput): Promise<User> {
+	@Mutation(() => SignupResponse)
+	public async signup(@Args('input') input: SignupInput): Promise<SignupResponse> {
 		console.log('Mutation: signup');
 		return await this.userService.signup(input);
 	}

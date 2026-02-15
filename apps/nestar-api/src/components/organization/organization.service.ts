@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, InternalServerErrorException } from '@
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Organization, Organizations } from '../../libs/dto/organization/organization';
-import { OrganizationInput, OrganizationInquiry } from '../../libs/dto/organization/organization.input';
+import { OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderSortInput } from '../../libs/dto/organization/organization.input';
 import { Message } from '../../libs/enums/common.enum';
 import { T } from '../../libs/types/common';
 import { shapeIntoMongoObjectId } from '../../libs/config';
@@ -358,5 +358,201 @@ export class OrganizationService {
 		org.meLiked = await this.likeService.checkLikeExistence(input);
 
 		return org;
+	}
+
+	// 1. Get Providers By Category
+	public async getProvidersByCategory(input: ProviderCategoryInput): Promise<Organizations> {
+		const page = input.page || 1;
+		const limit = input.limit || 10;
+		const skip = (page - 1) * limit;
+
+		const match: T = {
+			orgType: 'SERVICE_PROVIDER',
+			orgStatus: OrganizationStatus.ACTIVE,
+			categoryId: input.categoryId,
+			deletedAt: null,
+		};
+
+		if (input.subCategory) {
+			match.subCategory = input.subCategory;
+		}
+
+		if (input.location) {
+			match.$or = [
+				{ orgCountry: { $regex: input.location, $options: 'i' } },
+				{ orgCity: { $regex: input.location, $options: 'i' } },
+				{ location: { $regex: input.location, $options: 'i' } },
+			];
+		}
+
+		if (input.minBudget !== undefined || input.maxBudget !== undefined) {
+			match.startingRate = {};
+			if (input.minBudget !== undefined) {
+				match.startingRate.$gte = input.minBudget;
+			}
+			if (input.maxBudget !== undefined) {
+				match.startingRate.$lte = input.maxBudget;
+			}
+		}
+
+		const result = await this.organizationModel.aggregate([
+			{ $match: match },
+			{
+				$facet: {
+					list: [
+						{ $sort: { orgAverageRating: -1, orgTotalProjects: -1 } },
+						{ $skip: skip },
+						{ $limit: limit },
+						{
+							$lookup: {
+								from: 'users',
+								localField: 'orgOwnerUserId',
+								foreignField: '_id',
+								as: 'orgOwnerData',
+							},
+						},
+						{
+							$unwind: { path: '$orgOwnerData', preserveNullAndEmptyArrays: true },
+						},
+					],
+					metaCounter: [{ $count: 'total' }],
+				},
+			},
+		]).exec();
+
+		if (!result.length) {
+			return { list: [], metaCounter: [{ total: 0 }] };
+		}
+
+		return result[0];
+	}
+
+	// 2. Get Provider Detail
+	public async getProviderDetail(orgId: ObjectId, userId?: ObjectId | null): Promise<Organization> {
+		const orgIdObj = shapeIntoMongoObjectId(orgId);
+
+		const result = await this.organizationModel
+			.aggregate([
+				{ $match: { _id: orgIdObj, orgType: 'SERVICE_PROVIDER', orgStatus: OrganizationStatus.ACTIVE } },
+				{
+					$lookup: {
+						from: 'users',
+						localField: 'orgOwnerUserId',
+						foreignField: '_id',
+						as: 'orgOwnerData',
+					},
+				},
+				{
+					$unwind: { path: '$orgOwnerData', preserveNullAndEmptyArrays: true },
+				},
+			])
+			.exec();
+
+		if (!result.length) {
+			throw new BadRequestException('Provider not found.');
+		}
+
+		const org = result[0];
+
+		// Only show contact info (email, phone) if user is logged in
+		if (!userId) {
+			org.email = null;
+			org.phone = null;
+		}
+
+		return org;
+	}
+
+	// 3. Get Providers Sorted
+	public async getProvidersSorted(input: ProviderSortInput): Promise<Organizations> {
+		const page = input.page || 1;
+		const limit = input.limit || 10;
+		const skip = (page - 1) * limit;
+
+		const match: T = {
+			orgType: 'SERVICE_PROVIDER',
+			orgStatus: OrganizationStatus.ACTIVE,
+			deletedAt: null,
+		};
+
+		if (input.categoryId) {
+			match.categoryId = input.categoryId;
+		}
+
+		if (input.subCategory) {
+			match.subCategory = input.subCategory;
+		}
+
+		if (input.location) {
+			match.$or = [
+				{ orgCountry: { $regex: input.location, $options: 'i' } },
+				{ orgCity: { $regex: input.location, $options: 'i' } },
+				{ location: { $regex: input.location, $options: 'i' } },
+			];
+		}
+
+		if (input.searchQuery) {
+			match.$text = { $search: input.searchQuery };
+		}
+
+		if (input.minBudget !== undefined || input.maxBudget !== undefined) {
+			match.startingRate = {};
+			if (input.minBudget !== undefined) {
+				match.startingRate.$gte = input.minBudget;
+			}
+			if (input.maxBudget !== undefined) {
+				match.startingRate.$lte = input.maxBudget;
+			}
+		}
+
+		// Determine sort order
+		let sortOrder: T = {};
+		switch (input.sortBy) {
+			case 'rating':
+				sortOrder = { orgAverageRating: -1, reviewsCount: -1 };
+				break;
+			case 'projects':
+				sortOrder = { orgTotalProjects: -1 };
+				break;
+			case 'responseTime':
+				sortOrder = { orgResponseTimeAvg: 1 };
+				break;
+			case 'startingRate':
+				sortOrder = { startingRate: 1 };
+				break;
+			default:
+				sortOrder = { orgAverageRating: -1 };
+		}
+
+		const result = await this.organizationModel.aggregate([
+			{ $match: match },
+			{
+				$facet: {
+					list: [
+						{ $sort: sortOrder },
+						{ $skip: skip },
+						{ $limit: limit },
+						{
+							$lookup: {
+								from: 'users',
+								localField: 'orgOwnerUserId',
+								foreignField: '_id',
+								as: 'orgOwnerData',
+							},
+						},
+						{
+							$unwind: { path: '$orgOwnerData', preserveNullAndEmptyArrays: true },
+						},
+					],
+					metaCounter: [{ $count: 'total' }],
+				},
+			},
+		]).exec();
+
+		if (!result.length) {
+			return { list: [], metaCounter: [{ total: 0 }] };
+		}
+
+		return result[0];
 	}
 }

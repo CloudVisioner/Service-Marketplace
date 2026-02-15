@@ -1,0 +1,106 @@
+# ============================================
+# UPDATE PROVIDER INFORMATION
+# ============================================
+# Use Case: Provider updates their marketplace profile information
+# Auth Required: Yes (PROVIDER role)
+# Note: Provider can only update their own organization
+
+mutation UpdateOrganization($input: OrganizationUpdate!) {
+  updateOrganization(input: $input) {
+    _id
+    orgName
+    orgDescription
+    bio
+    categoryId
+    subCategory
+    serviceTitle
+    startingRate
+    minProjectSize
+    establishmentYear
+    teamSize
+    industries
+    location
+    flag
+    avatar
+    badges
+    color
+    email
+    phone
+    linkedIn
+    twitter
+    github
+    orgCountry
+    orgCity
+    orgWebsiteUrl
+    orgSkills
+    orgLogoImages
+    orgVerified
+    createdAt
+    updatedAt
+  }
+}
+
+# ============================================
+# VARIABLES EXAMPLES
+# ============================================
+
+# Example 1: Update Category & Subcategory
+# {
+#   "input": {
+#     "_id": "69864f6efcf99b93d1eca978",
+#     "categoryId": "IT_AND_SOFTWARE",
+#     "subCategory": "WEB_APP_DEVELOPMENT"
+#   }
+# }
+
+# Example 2: Update Budget/Pricing
+# {
+#   "input": {
+#     "_id": "69864f6efcf99b93d1eca978",
+#     "startingRate": 5000,
+#     "minProjectSize": 10000
+#   }
+# }
+
+# Example 3: Update Complete Provider Profile
+# {
+#   "input": {
+#     "_id": "69864f6efcf99b93d1eca978",
+#     "categoryId": "IT_AND_SOFTWARE",
+#     "subCategory": "WEB_APP_DEVELOPMENT",
+#     "serviceTitle": "Full-Stack E-commerce Solutions",
+#     "startingRate": 5000,
+#     "minProjectSize": 10000,
+#     "establishmentYear": 2020,
+#     "teamSize": 15,
+#     "industries": ["retail", "fashion", "electronics"],
+#     "bio": "We specialize in building scalable e-commerce platforms",
+#     "location": "San Francisco, USA",
+#     "flag": "🇺🇸",
+#     "avatar": "https://example.com/avatar.jpg",
+#     "badges": ["verified", "top-rated"],
+#     "color": "#3B82F6"
+#   }
+# }
+
+# Example 4: Update Contact Information
+# {
+#   "input": {
+#     "_id": "69864f6efcf99b93d1eca978",
+#     "email": "contact@provider.com",
+#     "phone": "+1-555-0123",
+#     "linkedIn": "https://linkedin.com/company/provider",
+#     "twitter": "https://twitter.com/provider",
+#     "github": "https://github.com/provider"
+#   }
+# }
+
+# Example 5: Update Basic Info Only
+# {
+#   "input": {
+#     "_id": "69864f6efcf99b93d1eca978",
+#     "orgName": "Updated Company Name",
+#     "orgDescription": "Updated description",
+#     "bio": "Updated bio text"
+#   }
+# }
