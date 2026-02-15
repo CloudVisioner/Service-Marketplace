@@ -13,6 +13,9 @@ export class SignupInput {
 
 	@IsNotEmpty()
 	@Length(3, 12)
+
+
+	
 	@Field(() => String)
 	userNick: string;
 

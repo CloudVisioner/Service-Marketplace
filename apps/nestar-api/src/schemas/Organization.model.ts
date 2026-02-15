@@ -18,12 +18,12 @@ const OrganizationSchema = new Schema(
 
 		orgCountry: {
 			type: String,
-			required: true,
+			required: false,
 		},
 
 		orgCity: {
 			type: String,
-			required: true,
+			required: false,
 		},
 
 
@@ -46,8 +46,8 @@ const OrganizationSchema = new Schema(
 		},
 
 		orgSkills: {
-			type: String,
-			required: true,
+			type: [String],
+			default: [],
 		},
 
 		orgOwnerUserId: {
@@ -64,7 +64,7 @@ const OrganizationSchema = new Schema(
 
 		orgDescription: {
 			type: String,
-			required: true,
+			required: false,
 		},
 
 		orgAverageRating: {
@@ -87,30 +87,32 @@ const OrganizationSchema = new Schema(
 
 		orgLogoImages: {
 			type: [String],
-			required: true,
+			default: [],
+			required: false,
 		},
 
 		orgTaxId: {
 			type: String,
-			required: true,
-			index: { unique: true },
+			required: false,
+			index: { unique: true, sparse: true },
 		},
 
 		orgWebsiteUrl: {
 			type: String,
-			required: true,
-			index: { unique: true },
+			required: false,
+			index: { unique: true, sparse: true },
 		},
 
 		// Provider marketplace fields
 		categoryId: {
-			type: String,
+			type: [String],
 			enum: ['IT_AND_SOFTWARE', 'BUSINESS_SERVICES', 'MARKETING_AND_SALES', 'DESIGN_AND_CREATIVE'],
 			index: true,
+			default: [],
 		},
 
 		subCategory: {
-			type: String,
+			type: [String],
 			enum: [
 				'WEB_APP_DEVELOPMENT',
 				'DATA_AND_AI',
@@ -129,6 +131,7 @@ const OrganizationSchema = new Schema(
 				'MOTION_AND_VIDEO',
 				'ILLUSTRATION_AND_PRINT',
 			],
+			default: [],
 		},
 
 		serviceTitle: {

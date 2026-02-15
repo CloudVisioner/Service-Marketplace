@@ -35,8 +35,8 @@ export class Organization {
 	@Field(() => Boolean)
 	orgVerified: boolean;
 
-	@Field(() => String)
-	orgSkills: string;
+	@Field(() => [String])
+	orgSkills: string[];
 
 	@Field(() => String)
 	orgOwnerUserId: mongoose.ObjectId;
@@ -63,11 +63,11 @@ export class Organization {
 	orgTaxId?: string;
 
 	// Provider marketplace fields
-	@Field(() => Category, { nullable: true })
-	categoryId?: Category;
+	@Field(() => [Category], { nullable: true })
+	categoryId?: Category[]; // Array of categories
 
-	@Field(() => SubCategory, { nullable: true })
-	subCategory?: SubCategory;
+	@Field(() => [SubCategory], { nullable: true })
+	subCategory?: SubCategory[]; // Array of subcategories
 
 	@Field(() => String, { nullable: true })
 	serviceTitle?: string;

@@ -75,7 +75,7 @@ export class OrganizationResolver {
 	): Promise<Organization> {
 		console.log('Mutation: updateOrganization');
 		
-		if (!input._id) {
+		if (!input.orgId) {
 			throw new BadRequestException('Organization ID is required.');
 		}
 		
@@ -83,8 +83,7 @@ export class OrganizationResolver {
 			throw new BadRequestException('User ID not found in authentication token. Please login again.');
 		}
 		
-		const orgIdObj = shapeIntoMongoObjectId(input._id);
-		return await this.organizationService.updateOrganization(orgIdObj, userId, userRole, input);
+		return await this.organizationService.updateOrganization(userId, userRole, input);
 	}
 
 	@UseGuards(AuthGuard)

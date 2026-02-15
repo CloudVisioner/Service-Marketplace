@@ -79,8 +79,8 @@ export class UserService {
 				console.warn('Aggregation returned empty, fetching user directly');
 				const directUser = await this.userModel.findById(createdUser._id).exec();
 				if (!directUser) {
-					throw new InternalServerErrorException(Message.CREATE_FAILED);
-				}
+				throw new InternalServerErrorException(Message.CREATE_FAILED);
+			}
 				user = directUser.toObject();
 				user.userOrganization = null;
 			} else {

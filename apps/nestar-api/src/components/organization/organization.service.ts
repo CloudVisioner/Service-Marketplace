@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Organization, Organizations } from '../../libs/dto/organization/organization';
 import { OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderSortInput } from '../../libs/dto/organization/organization.input';
+import { OrganizationUpdate } from '../../libs/dto/organization/organization.update';
 import { Message } from '../../libs/enums/common.enum';
 import { T } from '../../libs/types/common';
 import { shapeIntoMongoObjectId } from '../../libs/config';
@@ -19,6 +20,35 @@ export class OrganizationService {
 		@InjectModel('User') private userModel: Model<any>,
 		private likeService: LikeService,
 	) {}
+
+	/**
+	 * Normalizes categoryId and subCategory to always be arrays
+	 * Handles migration from string to array format
+	 */
+	private normalizeSubCategory(org: any): any {
+		// Normalize categoryId
+		if (org && org.categoryId !== undefined) {
+			if (typeof org.categoryId === 'string') {
+				// Convert single string to array
+				org.categoryId = [org.categoryId];
+			} else if (!Array.isArray(org.categoryId)) {
+				// If it's not a string and not an array, set to empty array
+				org.categoryId = [];
+			}
+		}
+
+		// Normalize subCategory
+		if (org && org.subCategory !== undefined) {
+			if (typeof org.subCategory === 'string') {
+				// Convert single string to array
+				org.subCategory = [org.subCategory];
+			} else if (!Array.isArray(org.subCategory)) {
+				// If it's not a string and not an array, set to empty array
+				org.subCategory = [];
+			}
+		}
+		return org;
+	}
 
 	public async createOrganization(userId: ObjectId, input: OrganizationInput): Promise<Organization> {
 		// Ensure userId is properly converted to ObjectId
@@ -61,16 +91,20 @@ export class OrganizationService {
 			throw new BadRequestException('Organization with this name already exists. Please choose a different name.');
 		}
 
-		// Check for duplicate tax ID
+		// Check for duplicate tax ID (only if provided)
+		if (input.orgTaxId) {
 		const existingTaxId = await this.organizationModel.findOne({ orgTaxId: input.orgTaxId }).exec();
 		if (existingTaxId) {
 			throw new BadRequestException('Organization with this tax ID already exists. Tax ID must be unique.');
+			}
 		}
 
-		// Check for duplicate website URL
+		// Check for duplicate website URL (only if provided)
+		if (input.orgWebsiteUrl) {
 		const existingWebsite = await this.organizationModel.findOne({ orgWebsiteUrl: input.orgWebsiteUrl }).exec();
 		if (existingWebsite) {
 			throw new BadRequestException('Organization with this website URL already exists. Website URL must be unique.');
+			}
 		}
 
 		try {
@@ -95,7 +129,8 @@ export class OrganizationService {
 
 			console.log('Organization created successfully. Owner ID:', result.orgOwnerUserId?.toString());
 
-			return result;
+			// Normalize subCategory to array
+			return this.normalizeSubCategory(result.toObject());
 		} catch (err) {
 			console.log('Error, OrganizationService.createOrganization:', err.message);
 			// Check for MongoDB duplicate key errors
@@ -162,7 +197,8 @@ export class OrganizationService {
 			org.meLiked = await this.likeService.checkLikeExistence(likeInput);
 		}
 
-		return org;
+		// Normalize subCategory to array
+		return this.normalizeSubCategory(org);
 	}
 
 	public async getOrganizations(input: OrganizationInquiry): Promise<Organizations> {
@@ -210,7 +246,13 @@ export class OrganizationService {
 			return { list: [], metaCounter: [{ total: 0 }] };
 		}
 
-		return result[0];
+		const organizations = result[0];
+		// Normalize subCategory for each organization in the list
+		if (organizations.list) {
+			organizations.list = organizations.list.map((org: any) => this.normalizeSubCategory(org));
+		}
+
+		return organizations;
 	}
 
 	public async getMyOrganizations(userId: ObjectId): Promise<Organization[]> {
@@ -221,11 +263,16 @@ export class OrganizationService {
 			.sort({ createdAt: -1 })
 			.exec();
 
-		return result;
+		// Normalize subCategory for each organization
+		return result.map((org: any) => this.normalizeSubCategory(org));
 	}
 
-	public async updateOrganization(orgId: ObjectId, userId: ObjectId, userRole: string, input: any): Promise<Organization> {
-		const orgIdObj = shapeIntoMongoObjectId(orgId);
+	public async updateOrganization(userId: ObjectId, userRole: string, input: OrganizationUpdate): Promise<Organization> {
+		if (!input.orgId) {
+			throw new BadRequestException('Organization ID is required.');
+		}
+
+		const orgIdObj = shapeIntoMongoObjectId(input.orgId);
 		const userIdObj = shapeIntoMongoObjectId(userId);
 
 		// First, check if the organization exists
@@ -244,8 +291,8 @@ export class OrganizationService {
 			throw new BadRequestException('Only the organization creator or admin can update this organization.');
 		}
 
-		// Remove _id and orgOwnerUserId from input to prevent modification
-		const { _id, orgOwnerUserId, ...updateData } = input as any;
+		// Remove orgId and orgOwnerUserId from input to prevent modification
+		const { orgId, orgOwnerUserId, ...updateData } = input as any;
 
 		// If orgType is being updated, validate it matches user role
 		if (updateData.orgType) {
@@ -304,7 +351,8 @@ export class OrganizationService {
 			throw new InternalServerErrorException(Message.UPDATE_FAILED);
 		}
 
-		return result;
+		// Normalize subCategory to array
+		return this.normalizeSubCategory(result.toObject());
 	}
 
 	public async likeTargetOrganization(userId: ObjectId, orgId: ObjectId): Promise<Organization> {
@@ -357,7 +405,8 @@ export class OrganizationService {
 		// Populate meLiked to show if current user liked this organization
 		org.meLiked = await this.likeService.checkLikeExistence(input);
 
-		return org;
+		// Normalize subCategory to array
+		return this.normalizeSubCategory(org);
 	}
 
 	// 1. Get Providers By Category
@@ -424,7 +473,13 @@ export class OrganizationService {
 			return { list: [], metaCounter: [{ total: 0 }] };
 		}
 
-		return result[0];
+		const organizations = result[0];
+		// Normalize subCategory for each organization in the list
+		if (organizations.list) {
+			organizations.list = organizations.list.map((org: any) => this.normalizeSubCategory(org));
+		}
+
+		return organizations;
 	}
 
 	// 2. Get Provider Detail
@@ -460,7 +515,8 @@ export class OrganizationService {
 			org.phone = null;
 		}
 
-		return org;
+		// Normalize subCategory to array
+		return this.normalizeSubCategory(org);
 	}
 
 	// 3. Get Providers Sorted
@@ -553,6 +609,12 @@ export class OrganizationService {
 			return { list: [], metaCounter: [{ total: 0 }] };
 		}
 
-		return result[0];
+		const organizations = result[0];
+		// Normalize subCategory for each organization in the list
+		if (organizations.list) {
+			organizations.list = organizations.list.map((org: any) => this.normalizeSubCategory(org));
+		}
+
+		return organizations;
 	}
 }

@@ -15,35 +15,35 @@ export class OrganizationInput {
 
 	@IsNotEmpty()
 	@Field(() => String)
-	orgCountry: string;
-
-	@IsNotEmpty()
-	@Field(() => String)
-	orgCity: string;
-
-	@IsNotEmpty()
-	@Field(() => String)
-	orgWebsiteUrl: string;
-
-	@IsNotEmpty()
-	@Field(() => String)
 	orgName: string;
 
-	@IsNotEmpty()
-	@Field(() => String)
-	orgDescription: string;
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	orgCountry?: string;
 
-	@IsNotEmpty()
-	@Field(() => String)
-	orgSkills: string;
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	orgCity?: string;
 
-	@IsNotEmpty()
-	@Field(() => String)
-	orgTaxId: string;
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	orgWebsiteUrl?: string;
 
-	@IsNotEmpty()
-	@Field(() => [String])
-	orgLogoImages: string[];
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	orgDescription?: string;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	orgSkills?: string[];
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	orgTaxId?: string;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	orgLogoImages?: string[];
 }
 
 @InputType()
