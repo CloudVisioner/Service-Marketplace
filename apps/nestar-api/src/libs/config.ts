@@ -1,4 +1,5 @@
 import { ObjectId } from 'bson';
+import { BadRequestException } from '@nestjs/common';
 
 export const availableUserSorts = ['createdAt', 'updatedAt'];
 
@@ -13,8 +14,38 @@ export const getSerialForImage = (filename: string) => {
 	return uuidv4() + ext;
 };
 
-export const shapeIntoMongoObjectId = (target: any) => {
-	return typeof target === 'string' ? new ObjectId(target) : target;
+/**
+ * Validates and converts a string to MongoDB ObjectId
+ * @param target - String or ObjectId to convert
+ * @param fieldName - Optional field name for error message (e.g., "orgId", "userId")
+ * @returns ObjectId instance
+ * @throws BadRequestException if string is not a valid ObjectId format
+ */
+export const shapeIntoMongoObjectId = (target: any, fieldName: string = 'ID') => {
+	if (target instanceof ObjectId) {
+		return target;
+	}
+	
+	if (typeof target === 'string') {
+		// Validate ObjectId format: must be exactly 24 hex characters
+		const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+		if (!objectIdRegex.test(target)) {
+			throw new BadRequestException(
+				`Invalid ${fieldName} format. Expected a 24-character hexadecimal string, but received: "${target}". Please provide a valid ${fieldName}.`
+			);
+		}
+		
+		try {
+			return new ObjectId(target);
+		} catch (error) {
+			throw new BadRequestException(
+				`Invalid ${fieldName} format: "${target}". Please provide a valid ${fieldName}.`
+			);
+		}
+	}
+	
+	// If it's already an ObjectId or other valid type, return as-is
+	return target;
 };
 
 export const lookupAuthUserLiked = (userId: T, targetRefId: string = '$_id') => {

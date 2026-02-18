@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { ServiceRequest, ServiceRequests } from '../../libs/dto/service-request/service-request';
-import { ServiceRequestInput, ServiceRequestInquiry } from '../../libs/dto/service-request/service-request.input';
-import { ServiceRequestStatus } from '../../libs/enums/service-request.enum';
+import { BuyerServiceRequests, ServiceRequest, ServiceRequestMeta, ServiceRequests } from '../../libs/dto/service-request/service-request';
+import { BuyerServiceRequestFilterInput, ServiceRequestInput, ServiceRequestInquiry } from '../../libs/dto/service-request/service-request.input';
+import { ServiceRequestStatus, Urgency } from '../../libs/enums/service-request.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { T } from '../../libs/types/common';
 import { shapeIntoMongoObjectId } from '../../libs/config';
@@ -89,15 +89,20 @@ export class ServiceRequestService {
 				reqTitle: input.reqTitle,
 				reqDescription: input.reqDescription,
 				reqBuyerOrgId: orgIdObj,
-				reqStatus: ServiceRequestStatus.OPEN,
+				reqStatus: input.reqStatus || ServiceRequestStatus.DRAFT,
+				reqCategory: input.reqCategory,
+				reqSubCategory: input.reqSubCategory || null,
 				reqBudgetMin: input.reqBudgetMin,
-				reqBudgetMax: input.reqBudgetMax,
+				reqBudgetMax: input.reqBudgetMax || null,
 				reqDeadline: input.reqDeadline,
-				reqSkillsNeeded: input.reqSkillsNeeded,
+				reqUrgency: input.reqUrgency || Urgency.NORMAL,
+				reqSkillsNeeded: input.reqSkillsNeeded || [],
+				reqAttachments: input.reqAttachments || [],
 				reqCreatedByUserId: userIdObj,
 				reqTotalLikes: 0,
 				reqTotalViews: 0,
 				reqTotalQuotes: 0,
+				reqNewQuotesCount: 0,
 			};
 
 			const result = await this.serviceRequestModel.create(serviceRequestData);
@@ -363,11 +368,12 @@ export class ServiceRequestService {
 
 			// Only allow specific transitions
 			const allowedTransitions: Record<ServiceRequestStatus, ServiceRequestStatus[]> = {
+				[ServiceRequestStatus.DRAFT]: [ServiceRequestStatus.PUBLISHED, ServiceRequestStatus.OPEN, ServiceRequestStatus.CANCELLED],
+				[ServiceRequestStatus.PUBLISHED]: [ServiceRequestStatus.OPEN, ServiceRequestStatus.CANCELLED],
 				[ServiceRequestStatus.OPEN]: [ServiceRequestStatus.CANCELLED],
 				[ServiceRequestStatus.IN_PROGRESS]: [ServiceRequestStatus.CLOSED, ServiceRequestStatus.CANCELLED],
 				[ServiceRequestStatus.CLOSED]: [], // No transitions allowed for buyer
 				[ServiceRequestStatus.CANCELLED]: [], // No transitions allowed
-				[ServiceRequestStatus.DRAFT]: [ServiceRequestStatus.OPEN, ServiceRequestStatus.CANCELLED],
 			};
 
 			const allowed = allowedTransitions[currentStatus] || [];
@@ -401,4 +407,166 @@ export class ServiceRequestService {
 		return result;
 	}
 
+	// =========================================================================
+	// BUYER-SPECIFIC SERVICE REQUEST APIs
+	// =========================================================================
+
+	/**
+	 * Get buyer's service requests with per-status meta counters.
+	 * Supports filtering by status, category, search term, sorting, and pagination.
+	 */
+	public async getBuyerServiceRequests(
+		userId: ObjectId,
+		input: BuyerServiceRequestFilterInput,
+	): Promise<BuyerServiceRequests> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+		const page = input.page || 1;
+		const limit = input.limit || 10;
+		const skip = (page - 1) * limit;
+
+		// Build match filter for the list query
+		const match: T = { reqCreatedByUserId: userIdObj };
+		if (input.status) match.reqStatus = input.status;
+		if (input.category) match.reqCategory = input.category;
+		if (input.search) {
+			match.$or = [
+				{ reqTitle: { $regex: input.search, $options: 'i' } },
+				{ reqDescription: { $regex: input.search, $options: 'i' } },
+			];
+		}
+
+		// Build sort
+		const sortField = input.sortBy || 'createdAt';
+		const sortDir = input.sortOrder === 'asc' ? 1 : -1;
+		const sort: T = { [sortField]: sortDir };
+
+		// Run two aggregations in parallel:
+		// 1) Paginated list + total count for current filter
+		// 2) Per-status counts (always unfiltered by status for the meta)
+		const [listResult, metaResult] = await Promise.all([
+			this.serviceRequestModel
+				.aggregate([
+					{ $match: match },
+					{ $sort: sort },
+					{
+						$facet: {
+							list: [
+								{ $skip: skip },
+								{ $limit: limit },
+								{
+									$lookup: {
+										from: 'organizations',
+										localField: 'reqBuyerOrgId',
+										foreignField: '_id',
+										as: 'reqBuyerOrgData',
+									},
+								},
+								{ $unwind: { path: '$reqBuyerOrgData', preserveNullAndEmptyArrays: true } },
+								{
+									$lookup: {
+										from: 'users',
+										localField: 'reqCreatedByUserId',
+										foreignField: '_id',
+										as: 'reqCreatedByUserData',
+									},
+								},
+								{ $unwind: { path: '$reqCreatedByUserData', preserveNullAndEmptyArrays: true } },
+							],
+							total: [{ $count: 'count' }],
+						},
+					},
+				])
+				.exec(),
+			// Per-status counts (unfiltered by status/category/search — shows all of the user's requests)
+			this.serviceRequestModel
+				.aggregate([
+					{ $match: { reqCreatedByUserId: userIdObj } },
+					{
+						$group: {
+							_id: '$reqStatus',
+							count: { $sum: 1 },
+						},
+					},
+				])
+				.exec(),
+		]);
+
+		// Parse list
+		const list = listResult.length ? listResult[0].list : [];
+		const totalFiltered = listResult.length && listResult[0].total.length ? listResult[0].total[0].count : 0;
+
+		// Parse per-status counts
+		const statusCounts: Record<string, number> = {};
+		for (const item of metaResult) {
+			statusCounts[item._id] = item.count;
+		}
+
+		const metaCounter: ServiceRequestMeta = {
+			total: Object.values(statusCounts).reduce((a: number, b: number) => a + b, 0),
+			open: (statusCounts[ServiceRequestStatus.OPEN] || 0) + (statusCounts[ServiceRequestStatus.PUBLISHED] || 0),
+			inProgress: statusCounts[ServiceRequestStatus.IN_PROGRESS] || 0,
+			closed: statusCounts[ServiceRequestStatus.CLOSED] || 0,
+			draft: statusCounts[ServiceRequestStatus.DRAFT] || 0,
+		};
+
+		return { list, metaCounter };
+	}
+
+	/**
+	 * Get buyer dashboard statistics.
+	 * Returns summary counts for active requests, quotes, orders, etc.
+	 */
+	public async getBuyerDashboardStats(userId: ObjectId): Promise<{
+		activeRequests: number;
+		totalQuotes: number;
+		newQuotes: number;
+		activeOrders: number;
+		unreadNotifications: number;
+	}> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+
+		// Count active service requests (OPEN, PUBLISHED, IN_PROGRESS)
+		const activeRequests = await this.serviceRequestModel
+			.countDocuments({
+				reqCreatedByUserId: userIdObj,
+				reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.PUBLISHED, ServiceRequestStatus.IN_PROGRESS] },
+			})
+			.exec();
+
+		// Sum up total quotes and new quotes across all buyer's service requests
+		const quotesAgg = await this.serviceRequestModel
+			.aggregate([
+				{ $match: { reqCreatedByUserId: userIdObj } },
+				{
+					$group: {
+						_id: null,
+						totalQuotes: { $sum: '$reqTotalQuotes' },
+						newQuotes: { $sum: '$reqNewQuotesCount' },
+					},
+				},
+			])
+			.exec();
+
+		const totalQuotes = quotesAgg.length ? quotesAgg[0].totalQuotes : 0;
+		const newQuotes = quotesAgg.length ? quotesAgg[0].newQuotes : 0;
+
+		// Count active orders (IN_PROGRESS requests where a quote was accepted)
+		const activeOrders = await this.serviceRequestModel
+			.countDocuments({
+				reqCreatedByUserId: userIdObj,
+				reqStatus: ServiceRequestStatus.IN_PROGRESS,
+			})
+			.exec();
+
+		// Notifications count — placeholder (returns 0 until notification system is integrated)
+		const unreadNotifications = 0;
+
+		return {
+			activeRequests,
+			totalQuotes,
+			newQuotes,
+			activeOrders,
+			unreadNotifications,
+		};
+	}
 }

@@ -17,14 +17,14 @@ export class Organization {
 	@Field(() => OrganizationStatus)
 	orgStatus: OrganizationStatus;
 
-	@Field(() => String)
-	orgCountry: string;
+	@Field(() => String, { nullable: true })
+	orgCountry?: string;
 
-	@Field(() => String)
-	orgCity: string;
+	@Field(() => String, { nullable: true })
+	orgCity?: string;
 
-	@Field(() => String)
-	orgWebsiteUrl: string;
+	@Field(() => String, { nullable: true })
+	orgWebsiteUrl?: string;
 
 	@Field(() => Int)
 	orgTotalProjects: number;
@@ -44,8 +44,11 @@ export class Organization {
 	@Field(() => String)
 	orgName: string;
 
-	@Field(() => String)
-	orgDescription: string;
+	@Field(() => String, { nullable: true })
+	orgDescription?: string;
+
+	@Field(() => String, { nullable: true })
+	orgIndustry?: string;
 
 	@Field(() => Int)
 	orgAverageRating: number;
@@ -79,7 +82,10 @@ export class Organization {
 	establishmentYear?: number;
 
 	@Field(() => Int, { nullable: true })
-	teamSize?: number;
+	orgTeamSize?: number;
+
+	@Field(() => [String], { nullable: true })
+	orgSpecialities?: string[];
 
 	@Field(() => [String], { nullable: true })
 	industries?: string[];

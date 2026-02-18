@@ -1,5 +1,5 @@
 import { Schema } from 'mongoose';
-import { ServiceRequestStatus } from '../libs/enums/service-request.enum';
+import { ServiceRequestStatus, Urgency } from '../libs/enums/service-request.enum';
 
 const ServiceRequestSchema = new Schema(
 	{
@@ -22,7 +22,18 @@ const ServiceRequestSchema = new Schema(
 		reqStatus: {
 			type: String,
 			enum: ServiceRequestStatus,
+			default: ServiceRequestStatus.DRAFT,
 			required: true,
+		},
+
+		reqCategory: {
+			type: String,
+			required: true,
+		},
+
+		reqSubCategory: {
+			type: String,
+			required: false,
 		},
 
 		reqBudgetMin: {
@@ -32,7 +43,7 @@ const ServiceRequestSchema = new Schema(
 
 		reqBudgetMax: {
 			type: Number,
-			required: true,
+			required: false,
 		},
 
 		reqDeadline: {
@@ -40,27 +51,41 @@ const ServiceRequestSchema = new Schema(
 			required: true,
 		},
 
+		reqUrgency: {
+			type: String,
+			enum: Urgency,
+			default: Urgency.NORMAL,
+			required: true,
+		},
+
 		reqSkillsNeeded: {
 			type: [String],
-			required: true,
+			default: [],
+		},
+
+		reqAttachments: {
+			type: [String],
+			default: [],
 		},
 
 		reqTotalLikes: {
 			type: Number,
 			default: 0,
-			required: true,
 		},
 
 		reqTotalViews: {
 			type: Number,
 			default: 0,
-			required: true,
 		},
 
 		reqTotalQuotes: {
 			type: Number,
 			default: 0,
-			required: true,
+		},
+
+		reqNewQuotesCount: {
+			type: Number,
+			default: 0,
 		},
 
 		reqCreatedByUserId: {
@@ -71,5 +96,10 @@ const ServiceRequestSchema = new Schema(
 	},
 	{ timestamps: true, collection: 'serviceRequests' },
 );
+
+// Index for buyer queries
+ServiceRequestSchema.index({ reqCreatedByUserId: 1, reqStatus: 1 });
+ServiceRequestSchema.index({ reqBuyerOrgId: 1, reqStatus: 1 });
+ServiceRequestSchema.index({ reqCategory: 1, reqStatus: 1 });
 
 export default ServiceRequestSchema;

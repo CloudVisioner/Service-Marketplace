@@ -1,6 +1,6 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, Min } from 'class-validator';
-import { ServiceRequestStatus } from '../../enums/service-request.enum';
+import { IsNotEmpty, IsOptional, MaxLength, Min } from 'class-validator';
+import { ServiceRequestStatus, Urgency } from '../../enums/service-request.enum';
 import { ObjectId } from 'mongoose';
 
 @InputType()
@@ -10,6 +10,7 @@ export class ServiceRequestInput {
 	reqTitle: string;
 
 	@IsNotEmpty()
+	@MaxLength(2000)
 	@Field(() => String)
 	reqDescription: string;
 
@@ -18,20 +19,40 @@ export class ServiceRequestInput {
 	reqBuyerOrgId: ObjectId;
 
 	@IsNotEmpty()
-	@Field(() => Number)
-	reqBudgetMin: number;
+	@Field(() => String)
+	reqCategory: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	reqSubCategory?: string;
 
 	@IsNotEmpty()
 	@Field(() => Number)
-	reqBudgetMax: number;
+	reqBudgetMin: number;
+
+	@IsOptional()
+	@Field(() => Number, { nullable: true })
+	reqBudgetMax?: number;
 
 	@IsNotEmpty()
 	@Field(() => Date)
 	reqDeadline: Date;
 
-	@IsNotEmpty()
-	@Field(() => [String])
-	reqSkillsNeeded: string[];
+	@IsOptional()
+	@Field(() => Urgency, { nullable: true, defaultValue: Urgency.NORMAL })
+	reqUrgency?: Urgency;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	reqSkillsNeeded?: string[];
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	reqAttachments?: string[];
+
+	@IsOptional()
+	@Field(() => ServiceRequestStatus, { nullable: true, defaultValue: ServiceRequestStatus.DRAFT })
+	reqStatus?: ServiceRequestStatus;
 }
 
 @InputType()
@@ -43,6 +64,10 @@ class ServiceRequestSearch {
 	@IsOptional()
 	@Field(() => ServiceRequestStatus, { nullable: true })
 	reqStatus?: ServiceRequestStatus;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	reqCategory?: string;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
@@ -65,7 +90,44 @@ export class ServiceRequestInquiry {
 	@Field(() => String, { nullable: true })
 	sort?: string;
 
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	sortOrder?: string; // "asc" or "desc"
+
 	@IsNotEmpty()
 	@Field(() => ServiceRequestSearch)
 	search: ServiceRequestSearch;
+}
+
+@InputType()
+export class BuyerServiceRequestFilterInput {
+	@IsOptional()
+	@Field(() => ServiceRequestStatus, { nullable: true })
+	status?: ServiceRequestStatus;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	category?: string;
+
+	@IsOptional()
+	@Min(1)
+	@Field(() => Int, { nullable: true, defaultValue: 1 })
+	page?: number;
+
+	@IsOptional()
+	@Min(1)
+	@Field(() => Int, { nullable: true, defaultValue: 10 })
+	limit?: number;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	sortBy?: string; // "createdAt", "deadline", "budgetMin"
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	sortOrder?: string; // "asc" or "desc"
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	search?: string; // search term for title/description
 }

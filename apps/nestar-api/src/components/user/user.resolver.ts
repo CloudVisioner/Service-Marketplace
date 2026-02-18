@@ -13,7 +13,7 @@ import { UserUpdate } from '../../libs/dto/user/user.update';
 import { getSerialForImage, shapeIntoMongoObjectId, validMimeTypes } from '../../libs/config';
 import { WithoutGuard } from '../auth/guards/without.guard';
 import { GraphQLUpload, FileUpload } from 'graphql-upload';
-import { createWriteStream } from 'fs';
+import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import { Message } from '../../libs/enums/common.enum';
 
 @Resolver()
@@ -101,14 +101,16 @@ export class UserResolver {
 		if (!validMime) throw new BadRequestException(Message.PROVIDE_ALLOWED_FORMAT);
 
 		const imageName = getSerialForImage(filename);
-		const url = `uploads/${target}/${imageName}`;
+		const dir = `uploads/${target}`;
+		if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+		const url = `${dir}/${imageName}`;
 		const stream = createReadStream();
 
 		const result = await new Promise((resolve, reject) => {
 			stream
 				.pipe(createWriteStream(url))
-				.on('finish', async () => resolve(true))
-				.on('error', () => reject(false));
+				.on('finish', () => resolve(true))
+				.on('error', (err) => reject(new BadRequestException(Message.UPLOAD_FAILED)));
 		});
 		if (!result) throw new BadRequestException(Message.UPLOAD_FAILED);
 
@@ -125,6 +127,8 @@ export class UserResolver {
 		console.log('Mutation: imagesUploader');
 
 		const uploadedImages = [];
+		const dir = `uploads/${target}`;
+		if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 		const promisedList = files.map(async (img: Promise<FileUpload>, index: number): Promise<Promise<void>> => {
 			try {
 				const { filename, mimetype, createReadStream } = await img;
@@ -133,14 +137,14 @@ export class UserResolver {
 				if (!validMime) throw new BadRequestException(Message.PROVIDE_ALLOWED_FORMAT);
 
 				const imageName = getSerialForImage(filename);
-				const url = `uploads/${target}/${imageName}`;
+				const url = `${dir}/${imageName}`;
 				const stream = createReadStream();
 
 				const result = await new Promise((resolve, reject) => {
 					stream
 						.pipe(createWriteStream(url))
 						.on('finish', () => resolve(true))
-						.on('error', () => reject(false));
+						.on('error', (err) => reject(new BadRequestException(Message.UPLOAD_FAILED)));
 				});
 				if (!result) throw new BadRequestException(Message.UPLOAD_FAILED);
 

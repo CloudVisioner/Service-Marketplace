@@ -67,6 +67,11 @@ const OrganizationSchema = new Schema(
 			required: false,
 		},
 
+		orgIndustry: {
+			type: String,
+			required: false,
+		},
+
 		orgAverageRating: {
 			type: Number,
 			default: 0,
@@ -147,9 +152,14 @@ const OrganizationSchema = new Schema(
 			type: Number,
 		},
 
-		teamSize: {
+		orgTeamSize: {
 			type: Number,
 			default: 0,
+		},
+
+		orgSpecialities: {
+			type: [String],
+			default: [],
 		},
 
 		industries: {

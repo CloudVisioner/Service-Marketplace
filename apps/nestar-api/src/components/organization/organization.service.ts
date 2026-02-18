@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, InternalServerErrorException } from '@
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Organization, Organizations } from '../../libs/dto/organization/organization';
-import { OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderSortInput } from '../../libs/dto/organization/organization.input';
+import { BuyerOrganizationInput, OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderSortInput } from '../../libs/dto/organization/organization.input';
 import { OrganizationUpdate } from '../../libs/dto/organization/organization.update';
 import { Message } from '../../libs/enums/common.enum';
 import { T } from '../../libs/types/common';
@@ -22,31 +22,39 @@ export class OrganizationService {
 	) {}
 
 	/**
-	 * Normalizes categoryId and subCategory to always be arrays
-	 * Handles migration from string to array format
+	 * Normalizes all array fields on an organization document.
+	 * Ensures every field that GraphQL declares as [Type] is always a proper array,
+	 * never null/undefined. This prevents "Cannot iterate over null" GraphQL errors
+	 * that occur when MongoDB aggregation bypasses Mongoose defaults.
 	 */
-	private normalizeSubCategory(org: any): any {
-		// Normalize categoryId
-		if (org && org.categoryId !== undefined) {
-			if (typeof org.categoryId === 'string') {
-				// Convert single string to array
-				org.categoryId = [org.categoryId];
-			} else if (!Array.isArray(org.categoryId)) {
-				// If it's not a string and not an array, set to empty array
-				org.categoryId = [];
+	private normalizeOrganizationFields(org: any): any {
+		if (!org) return org;
+
+		// --- Non-nullable array fields (GraphQL schema: [String]!) ---
+		// These MUST always be an array; GraphQL will error on null.
+		const requiredArrayFields = ['orgSkills', 'orgLogoImages'];
+		for (const field of requiredArrayFields) {
+			if (!Array.isArray(org[field])) {
+				org[field] = typeof org[field] === 'string' ? [org[field]] : [];
 			}
 		}
 
-		// Normalize subCategory
-		if (org && org.subCategory !== undefined) {
-			if (typeof org.subCategory === 'string') {
-				// Convert single string to array
-				org.subCategory = [org.subCategory];
-			} else if (!Array.isArray(org.subCategory)) {
-				// If it's not a string and not an array, set to empty array
-				org.subCategory = [];
+		// --- Nullable array fields (GraphQL schema: [Type] with nullable: true) ---
+		// These should be a proper array or null, but never a bare string / number.
+		const nullableArrayFields = ['categoryId', 'subCategory', 'industries', 'badges', 'orgSpecialities'];
+		for (const field of nullableArrayFields) {
+			if (org[field] !== undefined && org[field] !== null) {
+				if (typeof org[field] === 'string') {
+					org[field] = [org[field]];
+				} else if (!Array.isArray(org[field])) {
+					org[field] = [];
+				}
+			} else {
+				// Ensure null rather than undefined (GraphQL handles null fine for nullable fields)
+				org[field] = org[field] ?? [];
 			}
 		}
+
 		return org;
 	}
 
@@ -130,7 +138,7 @@ export class OrganizationService {
 			console.log('Organization created successfully. Owner ID:', result.orgOwnerUserId?.toString());
 
 			// Normalize subCategory to array
-			return this.normalizeSubCategory(result.toObject());
+			return this.normalizeOrganizationFields(result.toObject());
 		} catch (err) {
 			console.log('Error, OrganizationService.createOrganization:', err.message);
 			// Check for MongoDB duplicate key errors
@@ -198,7 +206,7 @@ export class OrganizationService {
 		}
 
 		// Normalize subCategory to array
-		return this.normalizeSubCategory(org);
+		return this.normalizeOrganizationFields(org);
 	}
 
 	public async getOrganizations(input: OrganizationInquiry): Promise<Organizations> {
@@ -249,7 +257,7 @@ export class OrganizationService {
 		const organizations = result[0];
 		// Normalize subCategory for each organization in the list
 		if (organizations.list) {
-			organizations.list = organizations.list.map((org: any) => this.normalizeSubCategory(org));
+			organizations.list = organizations.list.map((org: any) => this.normalizeOrganizationFields(org));
 		}
 
 		return organizations;
@@ -264,7 +272,7 @@ export class OrganizationService {
 			.exec();
 
 		// Normalize subCategory for each organization
-		return result.map((org: any) => this.normalizeSubCategory(org));
+		return result.map((org: any) => this.normalizeOrganizationFields(org));
 	}
 
 	public async updateOrganization(userId: ObjectId, userRole: string, input: OrganizationUpdate): Promise<Organization> {
@@ -352,7 +360,7 @@ export class OrganizationService {
 		}
 
 		// Normalize subCategory to array
-		return this.normalizeSubCategory(result.toObject());
+		return this.normalizeOrganizationFields(result.toObject());
 	}
 
 	public async likeTargetOrganization(userId: ObjectId, orgId: ObjectId): Promise<Organization> {
@@ -406,7 +414,7 @@ export class OrganizationService {
 		org.meLiked = await this.likeService.checkLikeExistence(input);
 
 		// Normalize subCategory to array
-		return this.normalizeSubCategory(org);
+		return this.normalizeOrganizationFields(org);
 	}
 
 	// 1. Get Providers By Category
@@ -476,7 +484,7 @@ export class OrganizationService {
 		const organizations = result[0];
 		// Normalize subCategory for each organization in the list
 		if (organizations.list) {
-			organizations.list = organizations.list.map((org: any) => this.normalizeSubCategory(org));
+			organizations.list = organizations.list.map((org: any) => this.normalizeOrganizationFields(org));
 		}
 
 		return organizations;
@@ -516,7 +524,7 @@ export class OrganizationService {
 		}
 
 		// Normalize subCategory to array
-		return this.normalizeSubCategory(org);
+		return this.normalizeOrganizationFields(org);
 	}
 
 	// 3. Get Providers Sorted
@@ -612,9 +620,170 @@ export class OrganizationService {
 		const organizations = result[0];
 		// Normalize subCategory for each organization in the list
 		if (organizations.list) {
-			organizations.list = organizations.list.map((org: any) => this.normalizeSubCategory(org));
+			organizations.list = organizations.list.map((org: any) => this.normalizeOrganizationFields(org));
 		}
 
 		return organizations;
+	}
+
+	// =========================================================================
+	// BUYER-SPECIFIC ORGANIZATION APIS
+	// =========================================================================
+
+	/**
+	 * Creates or updates a BUYER organization.
+	 * - If the user already has a BUYER org, updates it.
+	 * - If not, creates a new BUYER org.
+	 * - Auto-sets orgType=BUYER and orgStatus=ACTIVE.
+	 */
+	public async createOrUpdateBuyerOrganization(
+		userId: ObjectId,
+		input: BuyerOrganizationInput,
+	): Promise<Organization> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+
+		// Verify the user exists and is a BUYER
+		const user = await this.userModel.findById(userIdObj).exec();
+		if (!user) {
+			throw new BadRequestException('User not found.');
+		}
+		if (user.userRole !== 'BUYER') {
+			throw new BadRequestException('Only BUYER users can use this endpoint.');
+		}
+
+		// Check if the user already has a BUYER organization
+		const existingOrg = await this.organizationModel
+			.findOne({ orgOwnerUserId: userIdObj, orgType: 'BUYER' })
+			.exec();
+
+		if (existingOrg) {
+			// UPDATE existing organization
+			const updateData: any = {};
+			if (input.orgName) updateData.orgName = input.orgName;
+			if (input.orgIndustry !== undefined) updateData.orgIndustry = input.orgIndustry;
+			if (input.location !== undefined) updateData.location = input.location;
+			if (input.orgDescription !== undefined) updateData.orgDescription = input.orgDescription;
+			if (input.orgWebsiteUrl !== undefined) updateData.orgWebsiteUrl = input.orgWebsiteUrl;
+			if (input.orgLogoImages !== undefined) updateData.orgLogoImages = input.orgLogoImages;
+
+			// Check for unique name conflict (if changing name)
+			if (input.orgName && input.orgName !== existingOrg.orgName) {
+				const nameConflict = await this.organizationModel
+					.findOne({ orgName: input.orgName, _id: { $ne: existingOrg._id } })
+					.exec();
+				if (nameConflict) {
+					throw new BadRequestException('Organization with this name already exists.');
+				}
+			}
+
+			// Check for unique website conflict (if changing website)
+			if (input.orgWebsiteUrl && input.orgWebsiteUrl !== existingOrg.orgWebsiteUrl) {
+				const websiteConflict = await this.organizationModel
+					.findOne({ orgWebsiteUrl: input.orgWebsiteUrl, _id: { $ne: existingOrg._id } })
+					.exec();
+				if (websiteConflict) {
+					throw new BadRequestException('Organization with this website URL already exists.');
+				}
+			}
+
+			const result = await this.organizationModel
+				.findByIdAndUpdate(existingOrg._id, updateData, { new: true })
+				.exec();
+
+			if (!result) {
+				throw new InternalServerErrorException(Message.UPDATE_FAILED);
+			}
+
+			return this.normalizeOrganizationFields(result.toObject());
+		} else {
+			// CREATE new buyer organization
+
+			// Check for unique name
+			const nameConflict = await this.organizationModel.findOne({ orgName: input.orgName }).exec();
+			if (nameConflict) {
+				throw new BadRequestException('Organization with this name already exists.');
+			}
+
+			// Check for unique website (if provided)
+			if (input.orgWebsiteUrl) {
+				const websiteConflict = await this.organizationModel
+					.findOne({ orgWebsiteUrl: input.orgWebsiteUrl })
+					.exec();
+				if (websiteConflict) {
+					throw new BadRequestException('Organization with this website URL already exists.');
+				}
+			}
+
+			const orgData = {
+				orgType: 'BUYER',
+				orgStatus: OrganizationStatus.ACTIVE,
+				orgName: input.orgName,
+				orgIndustry: input.orgIndustry,
+				location: input.location,
+				orgDescription: input.orgDescription,
+				orgWebsiteUrl: input.orgWebsiteUrl || null,
+				orgLogoImages: input.orgLogoImages || [],
+				orgOwnerUserId: userIdObj,
+				orgVerified: false,
+				orgTotalProjects: 0,
+				orgResponseTimeAvg: 0,
+				orgAverageRating: 0,
+				orgTotalLikes: 0,
+				orgTotalViews: 0,
+				orgSkills: [],
+			};
+
+			try {
+				const result = await this.organizationModel.create(orgData);
+
+				// Increment userOrgCount for the creator
+				await this.userModel.findByIdAndUpdate(
+					userIdObj,
+					{ $inc: { userOrgCount: 1 } },
+					{ new: true },
+				).exec();
+
+				return this.normalizeOrganizationFields(result.toObject());
+			} catch (err) {
+				console.log('Error, createOrUpdateBuyerOrganization:', err.message);
+				if (err.code === 11000) {
+					const field = Object.keys(err.keyPattern)[0];
+					throw new BadRequestException(`Organization with this ${field} already exists.`);
+				}
+				throw new BadRequestException(err.message || Message.CREATE_FAILED);
+			}
+		}
+	}
+
+	/**
+	 * Gets the logged-in buyer's organization.
+	 * Uses only the authenticated userId — no orgId argument needed.
+	 * Returns null if the buyer has no organization yet.
+	 */
+	public async getBuyerOrganization(userId: ObjectId): Promise<Organization | null> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+
+		const result = await this.organizationModel
+			.aggregate([
+				{ $match: { orgOwnerUserId: userIdObj, orgType: 'BUYER' } },
+				{
+					$lookup: {
+						from: 'users',
+						localField: 'orgOwnerUserId',
+						foreignField: '_id',
+						as: 'orgOwnerData',
+					},
+				},
+				{
+					$unwind: { path: '$orgOwnerData', preserveNullAndEmptyArrays: true },
+				},
+			])
+			.exec();
+
+		if (!result.length) {
+			return null;
+		}
+
+		return this.normalizeOrganizationFields(result[0]);
 	}
 }

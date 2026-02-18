@@ -1,8 +1,8 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { ServiceRequestService } from './service-request.service';
-import { ServiceRequest, ServiceRequests } from '../../libs/dto/service-request/service-request';
-import { ServiceRequestInput, ServiceRequestInquiry } from '../../libs/dto/service-request/service-request.input';
+import { BuyerDashboardStats, BuyerServiceRequests, ServiceRequest, ServiceRequests } from '../../libs/dto/service-request/service-request';
+import { BuyerServiceRequestFilterInput, ServiceRequestInput, ServiceRequestInquiry } from '../../libs/dto/service-request/service-request.input';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -17,6 +17,10 @@ export class ServiceRequestResolver {
 	constructor(
 		private readonly serviceRequestService: ServiceRequestService,
 	) {}
+
+	// =========================================================================
+	// EXISTING APIs
+	// =========================================================================
 
 	@Roles(UserRole.BUYER)
 	@UseGuards(AuthGuard, RolesGuard)
@@ -72,4 +76,36 @@ export class ServiceRequestResolver {
 		return await this.serviceRequestService.updateServiceRequestStatus(requestIdObj, status, userId, userRole);
 	}
 
+	// =========================================================================
+	// BUYER-SPECIFIC APIs
+	// =========================================================================
+
+	/**
+	 * Get buyer's service requests with advanced filtering and per-status meta counters.
+	 * Frontend usage: "My Service Requests" page.
+	 */
+	@Roles(UserRole.BUYER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Query(() => BuyerServiceRequests)
+	public async getBuyerServiceRequests(
+		@Args('input', { nullable: true }) input: BuyerServiceRequestFilterInput,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<BuyerServiceRequests> {
+		console.log('Query: getBuyerServiceRequests');
+		return await this.serviceRequestService.getBuyerServiceRequests(userId, input || {});
+	}
+
+	/**
+	 * Get buyer dashboard summary statistics.
+	 * Frontend usage: Buyer Dashboard header.
+	 */
+	@Roles(UserRole.BUYER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Query(() => BuyerDashboardStats)
+	public async getBuyerDashboardStats(
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<BuyerDashboardStats> {
+		console.log('Query: getBuyerDashboardStats');
+		return await this.serviceRequestService.getBuyerDashboardStats(userId);
+	}
 }

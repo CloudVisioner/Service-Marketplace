@@ -1,0 +1,980 @@
+---
+description: Backend API requirements and specifications for buyer dashboard features including organization management, file uploads, and service request management
+globs: **/organization/**/*.ts,**/service-request/**/*.ts,**/user/**/*.ts,**/libs/dto/**/*.ts,**/schemas/**/*.ts
+---
+
+# Backend API Requirements for Buyer Dashboard
+
+This document provides complete API specifications for the buyer dashboard features.
+
+## Table of Contents
+1. [Organization Management](#1-organization-management)
+2. [File Upload (Logo)](#2-file-upload-logo)
+3. [Service Request Management](#3-service-request-management)
+4. [GraphQL Schema Definitions](#4-graphql-schema-definitions)
+5. [Authentication & Authorization](#5-authentication--authorization)
+6. [Error Handling](#6-error-handling)
+
+---
+
+## 1. Organization Management
+
+### 1.1 Query: `getBuyerOrganization`
+
+**Purpose:** Fetch the logged-in buyer's organization details
+
+**Authentication:** Required (JWT token)
+
+**GraphQL Query:**
+```graphql
+query GetBuyerOrganization {
+  getBuyerOrganization {
+    _id
+    orgName
+    industry
+    location
+    description
+    orgWebsiteUrl
+    orgLogoImages
+    orgVerified
+    createdAt
+    updatedAt
+  }
+}
+```
+
+**Return Behavior:**
+- If organization exists: Return `Organization` object
+- If no organization exists: Return `null` (not an error)
+
+**Backend Implementation:**
+- Extract `buyerId` from JWT token
+- Query organization where `orgOwnerUserId = buyerId` AND `orgType = 'BUYER'`
+- Return `null` if not found (not an error)
+
+**Usage:** Called on Settings page load to populate form
+
+---
+
+### 1.2 Mutation: `createOrUpdateBuyerOrganization`
+
+**Purpose:** Create a new organization OR update existing one for the logged-in buyer
+
+**Authentication:** Required (JWT token, BUYER role)
+
+**GraphQL Mutation:**
+```graphql
+mutation CreateOrUpdateBuyerOrganization($input: BuyerOrganizationInput!) {
+  createOrUpdateBuyerOrganization(input: $input) {
+    _id
+    orgName
+    orgIndustry
+    location
+    orgDescription
+    orgWebsiteUrl
+    orgLogoImages
+    orgVerified
+    createdAt
+    updatedAt
+  }
+}
+```
+
+**Input Type:**
+```graphql
+input BuyerOrganizationInput {
+  orgName: String!          # Organization name (required)
+  orgIndustry: String!       # Industry (required)
+  location: String!          # Location (required)
+  orgDescription: String!    # Company description (required, max 2000 chars)
+  orgWebsiteUrl: String      # Optional website URL
+  orgLogoImages: [String!]   # Array of logo image URLs (optional)
+}
+```
+
+**Backend Logic:**
+1. Extract `buyerId` from JWT token
+2. Verify user role is `BUYER`
+3. Check if buyer already has a BUYER organization:
+   - **If NO organization exists:**
+     - CREATE new organization
+     - Set `orgType: 'BUYER'`
+     - Set `orgStatus: 'ACTIVE'`
+     - Link to buyer via `orgOwnerUserId: buyerId`
+     - Set `orgVerified: false` (default)
+     - Return created organization
+   - **If organization EXISTS:**
+     - UPDATE existing organization
+     - Update all provided fields
+     - Update `updatedAt` timestamp
+     - Return updated organization
+
+**Validation Rules:**
+- `orgName`: Required, min 2 characters, max 100 characters, must be unique
+- `orgIndustry`: Required, min 2 characters, max 100 characters
+- `location`: Required, min 3 characters, max 200 characters
+- `orgDescription`: Required, min 10 characters, max 2000 characters
+- `orgWebsiteUrl`: Optional, must be valid URL format if provided, must be unique
+- `orgLogoImages`: Optional, array of valid image URLs
+
+**Error Cases:**
+- Missing required fields → Return validation error
+- Invalid URL format → Return validation error
+- Description too long → Return validation error
+- Duplicate orgName → Return error: "Organization with this name already exists"
+- Duplicate orgWebsiteUrl → Return error: "Organization with this website URL already exists"
+- Unauthorized (no valid JWT) → Return authentication error
+- Wrong user role → Return error: "Only BUYER users can use this endpoint"
+
+**Usage:** 
+- Called when user clicks "Create Organization" (first time)
+- Called when user clicks "Save Changes" (updating existing)
+
+**Implementation Files:**
+- [organization.resolver.ts](mdc:apps/nestar-api/src/components/organization/organization.resolver.ts) - Add `createOrUpdateBuyerOrganization` mutation and `getBuyerOrganization` query
+- [organization.service.ts](mdc:apps/nestar-api/src/components/organization/organization.service.ts) - Implement business logic
+- [organization.input.ts](mdc:apps/nestar-api/src/libs/dto/organization/organization.input.ts) - Define `BuyerOrganizationInput` type
+
+---
+
+## 2. File Upload (Logo)
+
+### 2.1 Mutation: `imageUploader`
+
+**Purpose:** Upload images (logo, attachments) using GraphQL multipart upload protocol
+
+**Authentication:** Required (JWT token)
+
+**GraphQL Mutation:**
+```graphql
+mutation ImageUploader($file: Upload!, $target: String!) {
+  imageUploader(file: $file, target: $target)
+}
+```
+
+**Input:**
+- `file: Upload!` - The file to upload (GraphQL Upload scalar)
+- `target: String!` - Target type: `'organization'`, `'member'`, `'service-request'`, etc.
+
+**Return Type:** `String` (URL of uploaded image, e.g., `"uploads/organization/uuid-filename.jpg"`)
+
+**Multipart Upload Protocol:**
+
+The frontend sends a `multipart/form-data` request with:
+
+1. **`operations`** (JSON string):
+   ```json
+   {
+     "query": "mutation ImageUploader($file: Upload!, $target: String!) { imageUploader(file: $file, target: $target) }",
+     "variables": {
+       "file": null,
+       "target": "organization"
+     }
+   }
+   ```
+
+2. **`map`** (JSON string):
+   ```json
+   {
+     "0": ["variables.file"]
+   }
+   ```
+
+3. **`0`** (file binary data):
+   - The actual file content
+
+**File Validation:**
+- **Allowed types:** `image/jpeg`, `image/jpg`, `image/png`
+- **Max file size:** 15MB (configured in [main.ts](mdc:apps/nestar-api/src/main.ts))
+- **Storage:** Local storage in `uploads/<target>/` directory
+- **Return:** Relative URL path (e.g., `"uploads/organization/uuid-filename.jpg"`)
+
+**Backend Processing:**
+1. Validate file type (must be in `validMimeTypes` array)
+2. Validate file exists and has filename
+3. Generate unique filename using `getSerialForImage(filename)` (UUID + timestamp)
+4. **Auto-create directory** if it doesn't exist: `uploads/<target>/`
+5. Write file to disk using `createWriteStream`
+6. Return relative URL path
+
+**Error Cases:**
+- Invalid file type → Return error: "Please provide jpg, jpeg or png images!"
+- File too large → Return error: "File size exceeds limit"
+- Upload failure → Return error: "Upload failed!"
+- Missing filename → Return error: "Upload failed!"
+
+**Usage:** Called when user selects logo file and clicks "Save Changes"
+
+**Implementation Files:**
+- [user.resolver.ts](mdc:apps/nestar-api/src/components/user/user.resolver.ts) - Contains `imageUploader` mutation
+- [main.ts](mdc:apps/nestar-api/src/main.ts) - Configures `graphqlUploadExpress` middleware
+- [app.module.ts](mdc:apps/nestar-api/src/app.module.ts) - Must have `csrfPrevention: false` for multipart uploads
+
+**Important Notes:**
+- The backend must have `csrfPrevention: false` in GraphQL config to allow multipart/form-data
+- Directories are auto-created if they don't exist
+- File errors must throw proper `BadRequestException`, not `reject(false)`
+
+---
+
+## 3. Service Request Management
+
+### 3.1 Mutation: `createServiceRequest`
+
+**Purpose:** Create a new service request/job posting
+
+**Authentication:** Required (JWT token, BUYER role)
+
+**GraphQL Mutation:**
+```graphql
+mutation CreateServiceRequest($input: ServiceRequestInput!) {
+  createServiceRequest(input: $input) {
+    _id
+    reqTitle
+    reqDescription
+    reqCategory
+    reqSubCategory
+    reqBudgetMin
+    reqBudgetMax
+    reqDeadline
+    reqUrgency
+    reqSkillsNeeded
+    reqAttachments
+    reqStatus
+    reqBuyerOrgId
+    reqCreatedByUserId
+    reqTotalQuotes
+    reqNewQuotesCount
+    createdAt
+    updatedAt
+  }
+}
+```
+
+**Input Type:**
+```graphql
+input ServiceRequestInput {
+  reqBuyerOrgId: String!     # ID of the buyer's organization (required)
+  reqTitle: String!          # Request title (required)
+  reqDescription: String!     # Detailed description (required, max 2000 chars)
+  reqCategory: String!        # Main category (e.g., "IT & Software")
+  reqSubCategory: String      # Subcategory (e.g., "Web & App Development")
+  reqBudgetMin: Float!        # Minimum budget in USD (required)
+  reqBudgetMax: Float         # Maximum budget in USD (optional)
+  reqDeadline: Date!          # ISO date (required)
+  reqUrgency: Urgency         # Enum: NORMAL (default), URGENT, CRITICAL
+  reqSkillsNeeded: [String!] # Array of required skills (optional)
+  reqAttachments: [String!]  # Array of attachment URLs (optional)
+  reqStatus: ServiceRequestStatus  # Optional, defaults to DRAFT
+}
+```
+
+**Backend Logic:**
+1. Extract `buyerId` from JWT token
+2. Verify user role is `BUYER`
+3. Validate `reqBuyerOrgId` belongs to the buyer (check `orgOwnerUserId`)
+4. Verify organization type is `BUYER`
+5. Set default `reqStatus: DRAFT` if not provided
+6. Set default `reqUrgency: NORMAL` if not provided
+7. Set `reqTotalQuotes: 0` and `reqNewQuotesCount: 0`
+8. Set `reqTotalLikes: 0` and `reqTotalViews: 0`
+9. Create service request
+10. Return created request
+
+**Validation Rules:**
+- `reqTitle`: Required, min 10 characters, max 200 characters, must be unique for active requests
+- `reqDescription`: Required, min 50 characters, max 2000 characters
+- `reqCategory`: Required, must be valid category
+- `reqSubCategory`: Optional, must be valid subcategory for the category
+- `reqBudgetMin`: Required, must be > 0
+- `reqBudgetMax`: Optional, if provided must be >= `reqBudgetMin`
+- `reqDeadline`: Required, must be future date
+- `reqUrgency`: Optional, defaults to `NORMAL`, must be NORMAL, URGENT, or CRITICAL
+- `reqSkillsNeeded`: Optional, array of strings, max 20 skills
+- `reqAttachments`: Optional, array of file URLs
+
+**Error Cases:**
+- Missing required fields → Validation error
+- Invalid organizationId → Error: "Organization not found"
+- Organization doesn't belong to buyer → Error: "You do not own this organization"
+- Organization type not BUYER → Error: "Only BUYER organizations can create service requests"
+- Duplicate title for active request → Error: "You already have an active service request with this title"
+- Invalid deadline (past date) → Error: "Deadline must be in the future"
+
+**Usage:** Called when user clicks "Publish Request" in Post Job page
+
+**Implementation Files:**
+- [service-request.resolver.ts](mdc:apps/nestar-api/src/components/service-request/service-request.resolver.ts) - Contains `createServiceRequest` mutation
+- [service-request.service.ts](mdc:apps/nestar-api/src/components/service-request/service-request.service.ts) - Business logic
+- [service-request.input.ts](mdc:apps/nestar-api/src/libs/dto/service-request/service-request.input.ts) - Input type definition
+- [service-request.enum.ts](mdc:apps/nestar-api/src/libs/enums/service-request.enum.ts) - `Urgency` and `ServiceRequestStatus` enums
+
+---
+
+### 3.2 Mutation: `updateServiceRequestStatus`
+
+**Purpose:** Update the status of a service request
+
+**Authentication:** Required (JWT token, BUYER or ADMIN role)
+
+**GraphQL Mutation:**
+```graphql
+mutation UpdateServiceRequestStatus($requestId: String!, $status: ServiceRequestStatus!) {
+  updateServiceRequestStatus(requestId: $requestId, status: $status) {
+    _id
+    reqStatus
+    updatedAt
+  }
+}
+```
+
+**Input:**
+- `requestId: String!` - Service request ID
+- `status: ServiceRequestStatus!` - New status
+
+**Backend Logic:**
+1. Verify request exists
+2. Verify request belongs to buyer (check `reqCreatedByUserId` matches JWT `buyerId`)
+3. Validate status transition (see allowed transitions below)
+4. Update status
+5. Return updated request
+
+**Status Transitions (BUYER allowed):**
+- `DRAFT` → `PUBLISHED` / `OPEN` / `CANCELLED`
+- `PUBLISHED` → `OPEN` / `CANCELLED`
+- `OPEN` → `CANCELLED`
+- `IN_PROGRESS` → `CLOSED` / `CANCELLED`
+- `CLOSED` → (no transitions allowed)
+- `CANCELLED` → (no transitions allowed)
+
+**Status Transitions (ADMIN allowed):**
+- ADMIN can make any transition, including reopening CLOSED requests
+
+**Error Cases:**
+- Request not found → Error: "Service request not found"
+- Request doesn't belong to buyer → Error: "You can only update service requests from your own organization"
+- Invalid status transition → Error: "Invalid status transition from X to Y"
+- Already in target status → Error: "Service request is already {status}"
+
+**Usage:** 
+- Called when user clicks "Publish Request" (DRAFT → PUBLISHED/OPEN)
+- Called when user closes a request (OPEN → CLOSED)
+
+**Implementation Files:**
+- [service-request.resolver.ts](mdc:apps/nestar-api/src/components/service-request/service-request.resolver.ts) - Contains `updateServiceRequestStatus` mutation
+- [service-request.service.ts](mdc:apps/nestar-api/src/components/service-request/service-request.service.ts) - Status transition validation logic
+
+---
+
+### 3.3 Query: `getBuyerServiceRequests`
+
+**Purpose:** Fetch all service requests created by the logged-in buyer with filtering, sorting, pagination, and per-status meta counters
+
+**Authentication:** Required (JWT token, BUYER role)
+
+**GraphQL Query:**
+```graphql
+query GetBuyerServiceRequests($input: BuyerServiceRequestFilterInput) {
+  getBuyerServiceRequests(input: $input) {
+    list {
+      _id
+      reqTitle
+      reqDescription
+      reqCategory
+      reqSubCategory
+      reqBudgetMin
+      reqBudgetMax
+      reqDeadline
+      reqUrgency
+      reqSkillsNeeded
+      reqAttachments
+      reqStatus
+      reqTotalQuotes
+      reqNewQuotesCount
+      reqBuyerOrgId
+      reqCreatedByUserId
+      createdAt
+      updatedAt
+    }
+    metaCounter {
+      total
+      open
+      inProgress
+      closed
+      draft
+    }
+  }
+}
+```
+
+**Input Type (Optional):**
+```graphql
+input BuyerServiceRequestFilterInput {
+  status: ServiceRequestStatus    # Filter by status
+  category: String                # Filter by category
+  page: Int                       # Pagination page (default: 1)
+  limit: Int                      # Items per page (default: 10)
+  sortBy: String                  # Sort field: "createdAt", "deadline", "budgetMin"
+  sortOrder: String              # "asc" or "desc" (default: "desc")
+  search: String                  # Search in title/description
+}
+```
+
+**Return Type:**
+```graphql
+type BuyerServiceRequests {
+  list: [ServiceRequest!]!
+  metaCounter: ServiceRequestMeta!
+}
+
+type ServiceRequestMeta {
+  total: Int!        # Total requests
+  open: Int!         # Open + Published requests count
+  inProgress: Int!   # In progress count
+  closed: Int!       # Closed count
+  draft: Int!        # Draft count
+}
+```
+
+**Backend Logic:**
+1. Extract `buyerId` from JWT token
+2. Build match filter: `reqCreatedByUserId = buyerId`
+3. Apply optional filters:
+   - If `status` provided: add to match
+   - If `category` provided: add `reqCategory = category` to match
+   - If `search` provided: add `$or` with regex on `reqTitle` and `reqDescription`
+4. Build sort: `{ [sortBy || 'createdAt']: sortOrder === 'asc' ? 1 : -1 }`
+5. Apply pagination: `skip = (page - 1) * limit`, `limit = limit || 10`
+6. **Calculate meta counters** (unfiltered by status/category/search):
+   - Query all buyer's requests grouped by status
+   - Count: `total`, `open` (OPEN + PUBLISHED), `inProgress`, `closed`, `draft`
+7. Return paginated list + meta counters
+
+**Usage:** Called on "My Service Requests" page
+
+**Implementation Files:**
+- [service-request.resolver.ts](mdc:apps/nestar-api/src/components/service-request/service-request.resolver.ts) - Contains `getBuyerServiceRequests` query
+- [service-request.service.ts](mdc:apps/nestar-api/src/components/service-request/service-request.service.ts) - Filtering, sorting, pagination, and meta counter logic
+- [service-request.input.ts](mdc:apps/nestar-api/src/libs/dto/service-request/service-request.input.ts) - `BuyerServiceRequestFilterInput` definition
+- [service-request.ts](mdc:apps/nestar-api/src/libs/dto/service-request/service-request.ts) - `BuyerServiceRequests` and `ServiceRequestMeta` return types
+
+---
+
+### 3.4 Query: `getBuyerDashboardStats`
+
+**Purpose:** Get summary statistics for buyer dashboard
+
+**Authentication:** Required (JWT token, BUYER role)
+
+**GraphQL Query:**
+```graphql
+query GetBuyerDashboardStats {
+  getBuyerDashboardStats {
+    activeRequests
+    totalQuotes
+    newQuotes
+    activeOrders
+    unreadNotifications
+  }
+}
+```
+
+**Return Type:**
+```graphql
+type BuyerDashboardStats {
+  activeRequests: Int!        # OPEN + PUBLISHED + IN_PROGRESS requests
+  totalQuotes: Int!          # Sum of reqTotalQuotes across all requests
+  newQuotes: Int!            # Sum of reqNewQuotesCount across all requests
+  activeOrders: Int!         # IN_PROGRESS requests (provider assigned)
+  unreadNotifications: Int!  # Placeholder: 0 until notification system integrated
+}
+```
+
+**Backend Logic:**
+1. Extract `buyerId` from JWT token
+2. Count active requests: `reqStatus IN [OPEN, PUBLISHED, IN_PROGRESS]`
+3. Aggregate total quotes: Sum `reqTotalQuotes` for all buyer's requests
+4. Aggregate new quotes: Sum `reqNewQuotesCount` for all buyer's requests
+5. Count active orders: `reqStatus = IN_PROGRESS`
+6. Return stats (unreadNotifications = 0 for now)
+
+**Usage:** Called on Buyer Dashboard page load
+
+**Implementation Files:**
+- [service-request.resolver.ts](mdc:apps/nestar-api/src/components/service-request/service-request.resolver.ts) - Contains `getBuyerDashboardStats` query
+- [service-request.service.ts](mdc:apps/nestar-api/src/components/service-request/service-request.service.ts) - Stats calculation logic
+- [service-request.ts](mdc:apps/nestar-api/src/libs/dto/service-request/service-request.ts) - `BuyerDashboardStats` return type
+
+---
+
+## 4. GraphQL Schema Definitions
+
+### 4.1 Enums
+
+**Defined in:** [service-request.enum.ts](mdc:apps/nestar-api/src/libs/enums/service-request.enum.ts)
+
+```graphql
+enum Urgency {
+  NORMAL
+  URGENT
+  CRITICAL
+}
+
+enum ServiceRequestStatus {
+  DRAFT
+  PUBLISHED
+  OPEN
+  IN_PROGRESS
+  CLOSED
+  CANCELLED
+}
+```
+
+### 4.2 Scalar Types
+
+```graphql
+scalar Upload  # GraphQL scalar for file uploads (multipart/form-data)
+```
+
+**Implementation:** Uses `graphql-upload` package, configured in [main.ts](mdc:apps/nestar-api/src/main.ts)
+
+### 4.3 Input Types
+
+**Defined in:** [organization.input.ts](mdc:apps/nestar-api/src/libs/dto/organization/organization.input.ts) and [service-request.input.ts](mdc:apps/nestar-api/src/libs/dto/service-request/service-request.input.ts)
+
+```graphql
+input BuyerOrganizationInput {
+  orgName: String!
+  orgIndustry: String!
+  location: String!
+  orgDescription: String!
+  orgWebsiteUrl: String
+  orgLogoImages: [String!]
+}
+
+input ServiceRequestInput {
+  reqBuyerOrgId: String!
+  reqTitle: String!
+  reqDescription: String!
+  reqCategory: String!
+  reqSubCategory: String
+  reqBudgetMin: Float!
+  reqBudgetMax: Float
+  reqDeadline: Date!
+  reqUrgency: Urgency
+  reqSkillsNeeded: [String!]
+  reqAttachments: [String!]
+  reqStatus: ServiceRequestStatus
+}
+
+input BuyerServiceRequestFilterInput {
+  status: ServiceRequestStatus
+  category: String
+  page: Int
+  limit: Int
+  sortBy: String
+  sortOrder: String
+  search: String
+}
+```
+
+### 4.4 Return Types
+
+**Defined in:** [organization.ts](mdc:apps/nestar-api/src/libs/dto/organization/organization.ts) and [service-request.ts](mdc:apps/nestar-api/src/libs/dto/service-request/service-request.ts)
+
+```graphql
+type Organization {
+  _id: String!
+  orgName: String!
+  orgIndustry: String
+  location: String
+  orgDescription: String
+  orgWebsiteUrl: String
+  orgLogoImages: [String!]!
+  orgVerified: Boolean!
+  createdAt: Date!
+  updatedAt: Date!
+}
+
+type ServiceRequest {
+  _id: String!
+  reqTitle: String!
+  reqDescription: String!
+  reqCategory: String!
+  reqSubCategory: String
+  reqBudgetMin: Float!
+  reqBudgetMax: Float
+  reqDeadline: Date!
+  reqUrgency: Urgency!
+  reqSkillsNeeded: [String!]!
+  reqAttachments: [String!]!
+  reqStatus: ServiceRequestStatus!
+  reqBuyerOrgId: String!
+  reqCreatedByUserId: String!
+  reqTotalQuotes: Int!
+  reqNewQuotesCount: Int!
+  createdAt: Date!
+  updatedAt: Date!
+}
+
+type BuyerServiceRequests {
+  list: [ServiceRequest!]!
+  metaCounter: ServiceRequestMeta!
+}
+
+type ServiceRequestMeta {
+  total: Int!
+  open: Int!
+  inProgress: Int!
+  closed: Int!
+  draft: Int!
+}
+
+type BuyerDashboardStats {
+  activeRequests: Int!
+  totalQuotes: Int!
+  newQuotes: Int!
+  activeOrders: Int!
+  unreadNotifications: Int!
+}
+```
+
+---
+
+## 5. Authentication & Authorization
+
+### 5.1 JWT Token Structure
+
+All mutations and queries require a valid JWT token in the `Authorization` header:
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Token Claims Expected:**
+- `_id` or `userId` - User ID (extracted via `@AuthUser('_id')` decorator)
+- `userRole` - User role (should be "BUYER" for buyer features)
+- `userEmail` - User email
+- Other user claims as needed
+
+**Implementation:** Uses [AuthGuard](mdc:apps/nestar-api/src/components/auth/guards/auth.guard.ts) and [RolesGuard](mdc:apps/nestar-api/src/components/auth/guards/roles.guard.ts)
+
+### 5.2 Authorization Rules
+
+1. **Organization Access:**
+   - Buyer can only access their own organization
+   - `getBuyerOrganization` returns organization linked to buyer's `_id`
+   - `createOrUpdateBuyerOrganization` creates/updates organization for buyer's `_id`
+   - Verify `orgOwnerUserId` matches JWT `_id` on all operations
+
+2. **Service Request Access:**
+   - Buyer can only create requests for their own organization
+   - Verify `reqBuyerOrgId` belongs to buyer (check `orgOwnerUserId`)
+   - Buyer can only view/update their own service requests
+   - Verify `reqCreatedByUserId` matches JWT `_id` on all operations
+
+3. **File Upload:**
+   - Only authenticated users can upload files
+   - Validate `target` parameter matches user's permissions
+
+**Role Decorators:**
+- Use `@Roles(UserRole.BUYER)` for buyer-only endpoints
+- Use `@UseGuards(AuthGuard, RolesGuard)` for protected endpoints
+
+---
+
+## 6. Error Handling
+
+### 6.1 Error Response Format
+
+**Defined in:** [app.module.ts](mdc:apps/nestar-api/src/app.module.ts) - `formatError` function
+
+```graphql
+type Error {
+  message: String!
+  code: String
+  field: String
+  extensions: JSON
+}
+```
+
+### 6.2 Common Error Codes
+
+| Code | Message | HTTP Status |
+|------|---------|-------------|
+| `UNAUTHENTICATED` | Authentication required | 401 |
+| `FORBIDDEN` | Not authorized | 403 |
+| `BAD_REQUEST` | Invalid input data | 400 |
+| `NOT_FOUND` | Resource not found | 404 |
+| `VALIDATION_ERROR` | Invalid input data | 400 |
+| `FILE_TOO_LARGE` | File exceeds size limit | 400 |
+| `INVALID_FILE_TYPE` | File type not allowed | 400 |
+| `ORGANIZATION_NOT_FOUND` | Organization does not exist | 404 |
+| `INVALID_STATUS_TRANSITION` | Cannot change status | 400 |
+
+### 6.3 Validation Error Format
+
+For field-level validation errors:
+```json
+{
+  "errors": [{
+    "message": "Organization name is required",
+    "extensions": {
+      "code": "VALIDATION_ERROR",
+      "field": "orgName"
+    }
+  }]
+}
+```
+
+**Implementation:** Uses `class-validator` decorators in DTOs and `ValidationPipe` in [main.ts](mdc:apps/nestar-api/src/main.ts)
+
+---
+
+## 7. Database Schema
+
+### 7.1 Organization Collection/Table
+
+**Defined in:** [Organization.model.ts](mdc:apps/nestar-api/src/schemas/Organization.model.ts)
+
+```javascript
+{
+  _id: ObjectId,
+  orgOwnerUserId: ObjectId,  // Reference to User (buyer)
+  orgType: String,            // "BUYER", "SERVICE_PROVIDER", "PLATFORM_ADMIN"
+  orgStatus: String,          // "ACTIVE", "INACTIVE", etc.
+  orgName: String,            // Unique
+  orgIndustry: String,
+  location: String,
+  orgDescription: String,
+  orgWebsiteUrl: String,      // Unique, sparse index
+  orgLogoImages: [String],    // Array of image URLs
+  orgVerified: Boolean,
+  orgTotalProjects: Number,
+  orgResponseTimeAvg: Number,
+  orgAverageRating: Number,
+  orgTotalLikes: Number,
+  orgTotalViews: Number,
+  orgSkills: [String],
+  orgTeamSize: Number,
+  orgSpecialities: [String],
+  createdAt: Date,
+  updatedAt: Date
+}
+
+// Indexes:
+// - orgOwnerUserId + orgType (for buyer org lookup)
+// - orgName (unique, text index for search)
+// - orgWebsiteUrl (unique, sparse)
+```
+
+### 7.2 Service Request Collection/Table
+
+**Defined in:** [ServiceRequest.model.ts](mdc:apps/nestar-api/src/schemas/ServiceRequest.model.ts)
+
+```javascript
+{
+  _id: ObjectId,
+  reqBuyerOrgId: ObjectId,     // Reference to Organization
+  reqCreatedByUserId: ObjectId, // Reference to User (buyer)
+  reqTitle: String,
+  reqDescription: String,
+  reqCategory: String,
+  reqSubCategory: String,
+  reqBudgetMin: Number,
+  reqBudgetMax: Number,
+  reqDeadline: Date,
+  reqUrgency: String,          // "NORMAL", "URGENT", "CRITICAL"
+  reqSkillsNeeded: [String],
+  reqAttachments: [String],    // Array of file URLs
+  reqStatus: String,           // "DRAFT", "PUBLISHED", "OPEN", "IN_PROGRESS", "CLOSED", "CANCELLED"
+  reqTotalLikes: Number,
+  reqTotalViews: Number,
+  reqTotalQuotes: Number,
+  reqNewQuotesCount: Number,
+  createdAt: Date,
+  updatedAt: Date
+}
+
+// Indexes:
+// - reqCreatedByUserId + reqStatus (for buyer queries)
+// - reqBuyerOrgId + reqStatus
+// - reqCategory + reqStatus
+// - createdAt (descending)
+// - deadline
+```
+
+---
+
+## 8. Important Implementation Notes
+
+### 8.1 File Upload Configuration
+
+1. **CSRF Prevention:** Must be disabled in GraphQL config:
+   ```typescript
+   GraphQLModule.forRoot({
+     csrfPrevention: false, // Required for multipart/form-data
+   })
+   ```
+
+2. **Upload Middleware:** Configured in [main.ts](mdc:apps/nestar-api/src/main.ts):
+   ```typescript
+   app.use(graphqlUploadExpress({ maxFileSize: 15000000, maxFiles: 10 }));
+   ```
+
+3. **Directory Auto-Creation:** Upload handlers must create directories if they don't exist:
+   ```typescript
+   const dir = `uploads/${target}`;
+   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+   ```
+
+4. **Error Handling:** File stream errors must throw proper exceptions, not `reject(false)`:
+   ```typescript
+   .on('error', (err) => reject(new BadRequestException(Message.UPLOAD_FAILED)));
+   ```
+
+### 8.2 Array Field Normalization
+
+All array fields in Organization must be normalized to always return arrays (never null):
+- **Non-nullable arrays:** `orgSkills`, `orgLogoImages` → Always return `[]` if null
+- **Nullable arrays:** `orgSpecialities`, `categoryId`, `subCategory`, `industries`, `badges` → Return `[]` if null
+
+**Implementation:** See `normalizeOrganizationFields()` in [organization.service.ts](mdc:apps/nestar-api/src/components/organization/organization.service.ts)
+
+### 8.3 One Organization Per Buyer
+
+- Each buyer can have only ONE BUYER organization
+- `createOrUpdateBuyerOrganization` handles both create and update
+- Query by `orgOwnerUserId = buyerId` AND `orgType = 'BUYER'`
+
+### 8.4 Service Request Status Flow
+
+- New requests start as `DRAFT`
+- User publishes → `DRAFT` → `PUBLISHED` or `OPEN`
+- Provider assigned → `OPEN` → `IN_PROGRESS`
+- Completed/Closed → `IN_PROGRESS`/`OPEN` → `CLOSED`
+- Can cancel from `DRAFT`, `PUBLISHED`, `OPEN`, or `IN_PROGRESS` → `CANCELLED`
+
+### 8.5 Date Format
+
+All dates should be ISO 8601 strings (e.g., "2024-12-31T00:00:00Z") or JavaScript `Date` objects (Mongoose handles conversion).
+
+### 8.6 Pagination Defaults
+
+- Default page size: 10
+- Maximum page size: 100
+- Page numbers start at 1
+
+---
+
+## 9. Testing Examples
+
+### 9.1 Create Organization (First Time)
+
+**Request:**
+```graphql
+mutation {
+  createOrUpdateBuyerOrganization(input: {
+    orgName: "Acme Corp"
+    orgIndustry: "Technology & Software"
+    location: "San Francisco, CA"
+    orgDescription: "Leading enterprise technology solutions company..."
+    orgLogoImages: ["uploads/organization/logo.png"]
+  }) {
+    _id
+    orgName
+    orgIndustry
+  }
+}
+```
+
+**Expected:** Creates new organization, returns with `_id`
+
+### 9.2 Update Organization (After Creation)
+
+**Request:** Same as above, but organization already exists
+
+**Expected:** Updates existing organization, returns updated object
+
+### 9.3 Upload Logo
+
+**Request:** Multipart form-data (see section 2.1)
+
+**Expected:** Returns image URL string (e.g., `"uploads/organization/uuid-filename.jpg"`)
+
+### 9.4 Create Service Request
+
+**Request:**
+```graphql
+mutation {
+  createServiceRequest(input: {
+    reqBuyerOrgId: "org123"
+    reqTitle: "Web Design & Brand Identity Refresh"
+    reqDescription: "We need a complete redesign..."
+    reqCategory: "Design & Creative"
+    reqSubCategory: "Visual Identity & Branding"
+    reqBudgetMin: 4500
+    reqBudgetMax: 6000
+    reqDeadline: "2024-12-31T00:00:00Z"
+    reqUrgency: URGENT
+    reqSkillsNeeded: ["Figma", "Photoshop", "Brand Guidelines"]
+    reqStatus: DRAFT
+  }) {
+    _id
+    reqTitle
+    reqStatus
+  }
+}
+```
+
+**Expected:** Creates service request with status DRAFT
+
+### 9.5 Get Service Requests
+
+**Request:**
+```graphql
+query {
+  getBuyerServiceRequests(input: {
+    status: OPEN
+    page: 1
+    limit: 10
+    sortBy: "createdAt"
+    sortOrder: "desc"
+  }) {
+    list {
+      _id
+      reqTitle
+      reqStatus
+      reqTotalQuotes
+    }
+    metaCounter {
+      total
+      open
+    }
+  }
+}
+```
+
+**Expected:** Returns filtered and paginated list with meta counters
+
+---
+
+## 10. Environment Variables Needed
+
+Backend should configure:
+- `JWT_SECRET` - For verifying JWT tokens
+- `PORT_API` - API server port (default: 3000)
+- `MAX_FILE_SIZE` - Max upload size in bytes (default: 15000000 = 15MB)
+- `ALLOWED_FILE_TYPES` - Comma-separated list (default: "image/jpeg,image/jpg,image/png")
+
+---
+
+**Last Updated:** 2024-02-18
+
+**Related Files:**
+- [organization.resolver.ts](mdc:apps/nestar-api/src/components/organization/organization.resolver.ts)
+- [organization.service.ts](mdc:apps/nestar-api/src/components/organization/organization.service.ts)
+- [service-request.resolver.ts](mdc:apps/nestar-api/src/components/service-request/service-request.resolver.ts)
+- [service-request.service.ts](mdc:apps/nestar-api/src/components/service-request/service-request.service.ts)
+- [user.resolver.ts](mdc:apps/nestar-api/src/components/user/user.resolver.ts)
+- [app.module.ts](mdc:apps/nestar-api/src/app.module.ts)
+- [main.ts](mdc:apps/nestar-api/src/main.ts)

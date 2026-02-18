@@ -1,6 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import mongoose from 'mongoose';
-import { ServiceRequestStatus } from '../../enums/service-request.enum';
+import { ServiceRequestStatus, Urgency } from '../../enums/service-request.enum';
 import { Organization } from '../organization/organization';
 import { User } from '../user/user';
 import { Quote } from '../quote/quote';
@@ -23,17 +23,29 @@ export class ServiceRequest {
 	@Field(() => ServiceRequestStatus)
 	reqStatus: ServiceRequestStatus;
 
+	@Field(() => String)
+	reqCategory: string;
+
+	@Field(() => String, { nullable: true })
+	reqSubCategory?: string;
+
 	@Field(() => Number)
 	reqBudgetMin: number;
 
-	@Field(() => Number)
-	reqBudgetMax: number;
+	@Field(() => Number, { nullable: true })
+	reqBudgetMax?: number;
 
 	@Field(() => Date)
 	reqDeadline: Date;
 
+	@Field(() => Urgency)
+	reqUrgency: Urgency;
+
 	@Field(() => [String])
 	reqSkillsNeeded: string[];
+
+	@Field(() => [String])
+	reqAttachments: string[];
 
 	@Field(() => Int)
 	reqTotalLikes: number;
@@ -43,6 +55,9 @@ export class ServiceRequest {
 
 	@Field(() => Int)
 	reqTotalQuotes: number;
+
+	@Field(() => Int)
+	reqNewQuotesCount: number;
 
 	@Field(() => String)
 	reqCreatedByUserId: mongoose.ObjectId;
@@ -65,10 +80,55 @@ export class ServiceRequest {
 }
 
 @ObjectType()
+export class ServiceRequestMeta {
+	@Field(() => Int)
+	total: number;
+
+	@Field(() => Int)
+	open: number;
+
+	@Field(() => Int)
+	inProgress: number;
+
+	@Field(() => Int)
+	closed: number;
+
+	@Field(() => Int)
+	draft: number;
+}
+
+@ObjectType()
 export class ServiceRequests {
 	@Field(() => [ServiceRequest])
 	list: ServiceRequest[];
 
 	@Field(() => [TotalCounter], { nullable: true })
 	metaCounter: TotalCounter[];
+}
+
+@ObjectType()
+export class BuyerServiceRequests {
+	@Field(() => [ServiceRequest])
+	list: ServiceRequest[];
+
+	@Field(() => ServiceRequestMeta)
+	metaCounter: ServiceRequestMeta;
+}
+
+@ObjectType()
+export class BuyerDashboardStats {
+	@Field(() => Int)
+	activeRequests: number;
+
+	@Field(() => Int)
+	totalQuotes: number;
+
+	@Field(() => Int)
+	newQuotes: number;
+
+	@Field(() => Int)
+	activeOrders: number;
+
+	@Field(() => Int)
+	unreadNotifications: number;
 }

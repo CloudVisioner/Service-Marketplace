@@ -2,7 +2,7 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards, BadRequestException } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { Organization, Organizations } from '../../libs/dto/organization/organization';
-import { OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderSortInput } from '../../libs/dto/organization/organization.input';
+import { BuyerOrganizationInput, OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderSortInput } from '../../libs/dto/organization/organization.input';
 import { OrganizationUpdate } from '../../libs/dto/organization/organization.update';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -111,7 +111,7 @@ export class OrganizationResolver {
 		@AuthUser('_id') userId?: ObjectId | null,
 	): Promise<Organization> {
 		console.log('Query: getProviderDetail');
-		const orgIdObj = shapeIntoMongoObjectId(orgId);
+		const orgIdObj = shapeIntoMongoObjectId(orgId, 'orgId');
 		return await this.organizationService.getProviderDetail(orgIdObj, userId);
 	}
 
@@ -120,5 +120,37 @@ export class OrganizationResolver {
 	public async getProvidersSorted(@Args('input') input: ProviderSortInput): Promise<Organizations> {
 		console.log('Query: getProvidersSorted');
 		return await this.organizationService.getProvidersSorted(input);
+	}
+
+	// =========================================================================
+	// BUYER-SPECIFIC ORGANIZATION APIs
+	// =========================================================================
+
+	// 4. Create or Update Buyer Organization (auto-sets orgType=BUYER)
+	@Roles(UserRole.BUYER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Mutation(() => Organization)
+	public async createOrUpdateBuyerOrganization(
+		@Args('input') input: BuyerOrganizationInput,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<Organization> {
+		console.log('Mutation: createOrUpdateBuyerOrganization');
+
+		if (!userId) {
+			throw new BadRequestException('User ID not found in authentication token. Please login again.');
+		}
+
+		return await this.organizationService.createOrUpdateBuyerOrganization(userId, input);
+	}
+
+	// 5. Get Buyer Organization (no orgId needed — uses auth context)
+	@Roles(UserRole.BUYER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Query(() => Organization, { nullable: true })
+	public async getBuyerOrganization(
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<Organization | null> {
+		console.log('Query: getBuyerOrganization');
+		return await this.organizationService.getBuyerOrganization(userId);
 	}
 }

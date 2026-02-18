@@ -1,5 +1,5 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, Length, Min } from 'class-validator';
+import { IsNotEmpty, IsOptional, MaxLength, Min } from 'class-validator';
 import { OrganizationType, OrganizationStatus } from '../../enums/organization.enum';
 import { Category, SubCategory } from '../../enums/category.enum';
 
@@ -34,12 +34,53 @@ export class OrganizationInput {
 	orgDescription?: string;
 
 	@IsOptional()
+	@Field(() => String, { nullable: true })
+	orgIndustry?: string;
+
+	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	orgSkills?: string[];
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	orgTaxId?: string;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	orgLogoImages?: string[];
+
+	@IsOptional()
+	@Min(0)
+	@Field(() => Int, { nullable: true })
+	orgTeamSize?: number;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	orgSpecialities?: string[];
+}
+
+@InputType()
+export class BuyerOrganizationInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	orgName: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	orgIndustry: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	location: string;
+
+	@IsNotEmpty()
+	@MaxLength(2000)
+	@Field(() => String)
+	orgDescription: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	orgWebsiteUrl?: string;
 
 	@IsOptional()
 	@Field(() => [String], { nullable: true })

@@ -19,6 +19,7 @@ import { SocketModule } from './socket/socket.module';
 			playground: true,
 			uploads: false, // for receiving images, multipart/form-data is ON.
 			autoSchemaFile: true,
+			csrfPrevention: false, // Required for multipart/form-data file uploads via graphql-upload
 			formatError: (error: T) => { // customizes, cleans graphQL errors for clients
 				const graphQLFormattedError = {
 					code: error?.extensions.code,

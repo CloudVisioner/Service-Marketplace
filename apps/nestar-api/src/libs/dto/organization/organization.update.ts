@@ -1,5 +1,5 @@
-import { Field, InputType } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional } from 'class-validator';
+import { Field, InputType, Int } from '@nestjs/graphql';
+import { IsNotEmpty, IsOptional, Min } from 'class-validator';
 
 @InputType()
 export class OrganizationUpdate {
@@ -44,6 +44,10 @@ export class OrganizationUpdate {
 	orgDescription?: string;
 
 	@IsOptional()
+	@Field(() => String, { nullable: true })
+	orgIndustry?: string;
+
+	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	orgSkills?: string[]; // Array of skills
 
@@ -54,4 +58,13 @@ export class OrganizationUpdate {
 	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	orgLogoImages?: string[];
+
+	@IsOptional()
+	@Min(0)
+	@Field(() => Int, { nullable: true })
+	orgTeamSize?: number;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	orgSpecialities?: string[];
 }

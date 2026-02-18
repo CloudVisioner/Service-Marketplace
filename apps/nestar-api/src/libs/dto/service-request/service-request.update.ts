@@ -1,6 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional } from 'class-validator';
-import { ServiceRequestStatus } from '../../enums/service-request.enum';
+import { IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import { ServiceRequestStatus, Urgency } from '../../enums/service-request.enum';
 import { ObjectId } from 'mongoose';
 
 @InputType()
@@ -14,12 +14,21 @@ export class ServiceRequestUpdate {
 	reqTitle?: string;
 
 	@IsOptional()
+	@MaxLength(2000)
 	@Field(() => String, { nullable: true })
 	reqDescription?: string;
 
 	@IsOptional()
 	@Field(() => ServiceRequestStatus, { nullable: true })
 	reqStatus?: ServiceRequestStatus;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	reqCategory?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	reqSubCategory?: string;
 
 	@IsOptional()
 	@Field(() => Number, { nullable: true })
@@ -34,6 +43,14 @@ export class ServiceRequestUpdate {
 	reqDeadline?: Date;
 
 	@IsOptional()
+	@Field(() => Urgency, { nullable: true })
+	reqUrgency?: Urgency;
+
+	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	reqSkillsNeeded?: string[];
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	reqAttachments?: string[];
 }
