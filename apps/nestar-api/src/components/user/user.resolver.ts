@@ -1,7 +1,7 @@
 import { Mutation, Resolver, Query, Args } from '@nestjs/graphql';
 import { UserService } from './user.service';
 import { BadRequestException, InternalServerErrorException, UseGuards } from '@nestjs/common';
-import { LoginInput, UserInput, UsersInquiry, SignupInput } from '../../libs/dto/user/user.input';
+import { LoginInput, UserInput, UsersInquiry, SignupInput, ChangePasswordInput } from '../../libs/dto/user/user.input';
 import { User, Users, SignupResponse } from '../../libs/dto/user/user';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthUser } from '../auth/decorators/authUser.decorator';
@@ -156,5 +156,16 @@ export class UserResolver {
 
 		await Promise.all(promisedList);
 		return uploadedImages;
+	}
+
+	@UseGuards(AuthGuard)
+	@Mutation(() => Boolean)
+	public async changeMyPassword(
+		@Args('input') input: ChangePasswordInput,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<boolean> {
+		console.log('Mutation: changeMyPassword');
+		await this.userService.changeMyPassword(userId, input);
+		return true;
 	}
 }

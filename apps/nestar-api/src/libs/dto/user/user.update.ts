@@ -57,14 +57,6 @@ export class UserUpdate {
 	userOrganizationId?: string;
 
 	@IsOptional()
-	@Field(() => String, { nullable: true })
-	userCountry?: string;
-
-	@IsOptional()
-	@Field(() => String, { nullable: true })
-	userCity?: string;
-
-	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	userLanguages?: string[];
 

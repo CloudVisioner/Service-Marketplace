@@ -25,10 +25,21 @@ export class RolesGuard implements CanActivate {
 			
 			try {
 				const authUser = await this.authService.verifyUserToken(token);
-				const hasRole = () => roles.indexOf(authUser.userRole) > -1;
-				const hasPermission: boolean = hasRole();
+				
+				// Convert roles array to strings for comparison (handles enum values)
+				const roleStrings = roles.map(role => String(role));
+				const userRoleString = String(authUser.userRole);
+				
+				const hasRole = roleStrings.includes(userRoleString);
+				
+				console.log('RolesGuard - Required roles:', roleStrings);
+				console.log('RolesGuard - User role:', userRoleString);
+				console.log('RolesGuard - Has permission:', hasRole);
 
-				if (!authUser || !hasPermission) throw new ForbiddenException(Message.ONLY_SPECIFIC_ROLES_ALLOWED);
+				if (!authUser || !hasRole) {
+					console.error('Token verification failed in RolesGuard: Allowed only for members with specific roles!');
+					throw new ForbiddenException(Message.ONLY_SPECIFIC_ROLES_ALLOWED);
+				}
 
 				console.log('userNick[roles] =>', authUser.userNick);
 				request.body.authUser = authUser;

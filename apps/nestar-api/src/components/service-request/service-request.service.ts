@@ -92,8 +92,7 @@ export class ServiceRequestService {
 				reqStatus: input.reqStatus || ServiceRequestStatus.DRAFT,
 				reqCategory: input.reqCategory,
 				reqSubCategory: input.reqSubCategory || null,
-				reqBudgetMin: input.reqBudgetMin,
-				reqBudgetMax: input.reqBudgetMax || null,
+				reqBudgetRange: input.reqBudgetRange,
 				reqDeadline: input.reqDeadline,
 				reqUrgency: input.reqUrgency || Urgency.NORMAL,
 				reqSkillsNeeded: input.reqSkillsNeeded || [],
@@ -106,6 +105,14 @@ export class ServiceRequestService {
 			};
 
 			const result = await this.serviceRequestModel.create(serviceRequestData);
+
+			// Increment userTotalServiceRequests counter for the creator
+			await this.userModel.findByIdAndUpdate(
+				userIdObj,
+				{ $inc: { userTotalServiceRequests: 1 } },
+				{ new: true },
+			).exec();
+
 			return result;
 		} catch (err) {
 			console.log('Error, ServiceRequestService.createServiceRequest:', err.message);

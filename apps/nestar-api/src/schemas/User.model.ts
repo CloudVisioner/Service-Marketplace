@@ -59,14 +59,6 @@ const UserSchema = new Schema(
 			index: true,
 		},
 
-		userCountry: {
-			type: String,
-		},
-
-		userCity: {
-			type: String,
-		},
-
 		userDescription: {
 			type: String,
 		},

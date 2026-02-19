@@ -30,9 +30,44 @@ export class OrganizationService {
 	private normalizeOrganizationFields(org: any): any {
 		if (!org) return org;
 
+		// Map old field names to new field names (for backward compatibility with old records)
+		if (!org.organizationName && org.orgName) {
+			org.organizationName = org.orgName;
+		}
+		if (!org.organizationIndustry && org.orgIndustry) {
+			org.organizationIndustry = org.orgIndustry;
+		}
+		if (!org.organizationLocation && org.location) {
+			org.organizationLocation = org.location;
+		}
+		if (!org.organizationDescription && org.orgDescription) {
+			org.organizationDescription = org.orgDescription;
+		}
+		if (!org.organizationWebsiteUrl && org.orgWebsiteUrl) {
+			org.organizationWebsiteUrl = org.orgWebsiteUrl;
+		}
+		if (!org.organizationImage && org.orgLogoImages) {
+			org.organizationImage = org.orgLogoImages;
+		}
+		if (!org.organizationTeamSize && org.orgTeamSize !== undefined) {
+			org.organizationTeamSize = org.orgTeamSize;
+		}
+		if (!org.organizationSpecialties && org.orgSpecialities) {
+			org.organizationSpecialties = org.orgSpecialities;
+		}
+		if (!org.organizationHourlyRate && org.startingRate !== undefined) {
+			org.organizationHourlyRate = org.startingRate;
+		}
+		if (!org.organizationEmail && org.email) {
+			org.organizationEmail = org.email;
+		}
+		if (!org.organizationPhoneNumber && org.phone) {
+			org.organizationPhoneNumber = org.phone;
+		}
+
 		// --- Non-nullable array fields (GraphQL schema: [String]!) ---
 		// These MUST always be an array; GraphQL will error on null.
-		const requiredArrayFields = ['orgSkills', 'orgLogoImages'];
+		const requiredArrayFields = ['orgSkills', 'organizationImage'];
 		for (const field of requiredArrayFields) {
 			if (!Array.isArray(org[field])) {
 				org[field] = typeof org[field] === 'string' ? [org[field]] : [];
@@ -41,7 +76,7 @@ export class OrganizationService {
 
 		// --- Nullable array fields (GraphQL schema: [Type] with nullable: true) ---
 		// These should be a proper array or null, but never a bare string / number.
-		const nullableArrayFields = ['categoryId', 'subCategory', 'industries', 'badges', 'orgSpecialities'];
+		const nullableArrayFields = ['categoryId', 'subCategory', 'industries', 'badges', 'organizationSpecialties'];
 		for (const field of nullableArrayFields) {
 			if (org[field] !== undefined && org[field] !== null) {
 				if (typeof org[field] === 'string') {
@@ -53,6 +88,16 @@ export class OrganizationService {
 				// Ensure null rather than undefined (GraphQL handles null fine for nullable fields)
 				org[field] = org[field] ?? [];
 			}
+		}
+
+		// Map organizationEmail to organizationContactEmail for frontend compatibility
+		if (org.organizationEmail !== undefined) {
+			org.organizationContactEmail = org.organizationEmail;
+		}
+
+		// Ensure required non-nullable fields have values (for old records)
+		if (!org.organizationName) {
+			org.organizationName = org.orgName || '';
 		}
 
 		return org;
@@ -94,7 +139,7 @@ export class OrganizationService {
 		}
 
 		// Check for duplicate organization name
-		const existingName = await this.organizationModel.findOne({ orgName: input.orgName }).exec();
+		const existingName = await this.organizationModel.findOne({ organizationName: input.organizationName }).exec();
 		if (existingName) {
 			throw new BadRequestException('Organization with this name already exists. Please choose a different name.');
 		}
@@ -108,8 +153,8 @@ export class OrganizationService {
 		}
 
 		// Check for duplicate website URL (only if provided)
-		if (input.orgWebsiteUrl) {
-		const existingWebsite = await this.organizationModel.findOne({ orgWebsiteUrl: input.orgWebsiteUrl }).exec();
+		if (input.organizationWebsiteUrl) {
+		const existingWebsite = await this.organizationModel.findOne({ organizationWebsiteUrl: input.organizationWebsiteUrl }).exec();
 		if (existingWebsite) {
 			throw new BadRequestException('Organization with this website URL already exists. Website URL must be unique.');
 			}
@@ -144,11 +189,11 @@ export class OrganizationService {
 			// Check for MongoDB duplicate key errors
 			if (err.code === 11000) {
 				const field = Object.keys(err.keyPattern)[0];
-				if (field === 'orgName') {
+				if (field === 'organizationName') {
 					throw new BadRequestException('Organization with this name already exists.');
 				} else if (field === 'orgTaxId') {
 					throw new BadRequestException('Organization with this tax ID already exists.');
-				} else if (field === 'orgWebsiteUrl') {
+				} else if (field === 'organizationWebsiteUrl') {
 					throw new BadRequestException('Organization with this website URL already exists.');
 				}
 			}
@@ -214,8 +259,8 @@ export class OrganizationService {
 
 		if (input.text) {
 			match.$or = [
-				{ orgName: { $regex: input.text, $options: 'i' } },
-				{ orgDescription: { $regex: input.text, $options: 'i' } },
+				{ organizationName: { $regex: input.text, $options: 'i' } },
+				{ organizationDescription: { $regex: input.text, $options: 'i' } },
 				{ orgCountry: { $regex: input.text, $options: 'i' } },
 				{ orgCity: { $regex: input.text, $options: 'i' } },
 			];
@@ -300,7 +345,12 @@ export class OrganizationService {
 		}
 
 		// Remove orgId and orgOwnerUserId from input to prevent modification
-		const { orgId, orgOwnerUserId, ...updateData } = input as any;
+		const { orgId, orgOwnerUserId, organizationContactEmail, ...updateData } = input as any;
+		
+		// Map organizationContactEmail to organizationEmail for database
+		if (organizationContactEmail !== undefined) {
+			updateData.organizationEmail = organizationContactEmail;
+		}
 
 		// If orgType is being updated, validate it matches user role
 		if (updateData.orgType) {
@@ -322,9 +372,9 @@ export class OrganizationService {
 		}
 
 		// Prevent updating unique fields if they conflict with existing organizations
-		if (updateData.orgName && updateData.orgName !== org.orgName) {
+		if (updateData.organizationName && updateData.organizationName !== org.organizationName) {
 			const existingName = await this.organizationModel
-				.findOne({ orgName: updateData.orgName, _id: { $ne: orgIdObj } })
+				.findOne({ organizationName: updateData.organizationName, _id: { $ne: orgIdObj } })
 				.exec();
 			if (existingName) {
 				throw new BadRequestException('Organization with this name already exists. Please choose a different name.');
@@ -340,9 +390,9 @@ export class OrganizationService {
 			}
 		}
 
-		if (updateData.orgWebsiteUrl && updateData.orgWebsiteUrl !== org.orgWebsiteUrl) {
+		if (updateData.organizationWebsiteUrl && updateData.organizationWebsiteUrl !== org.organizationWebsiteUrl) {
 			const existingWebsite = await this.organizationModel
-				.findOne({ orgWebsiteUrl: updateData.orgWebsiteUrl, _id: { $ne: orgIdObj } })
+				.findOne({ organizationWebsiteUrl: updateData.organizationWebsiteUrl, _id: { $ne: orgIdObj } })
 				.exec();
 			if (existingWebsite) {
 				throw new BadRequestException('Organization with this website URL already exists. Website URL must be unique.');
@@ -438,17 +488,17 @@ export class OrganizationService {
 			match.$or = [
 				{ orgCountry: { $regex: input.location, $options: 'i' } },
 				{ orgCity: { $regex: input.location, $options: 'i' } },
-				{ location: { $regex: input.location, $options: 'i' } },
+				{ organizationLocation: { $regex: input.location, $options: 'i' } },
 			];
 		}
 
 		if (input.minBudget !== undefined || input.maxBudget !== undefined) {
-			match.startingRate = {};
+			match.organizationHourlyRate = {};
 			if (input.minBudget !== undefined) {
-				match.startingRate.$gte = input.minBudget;
+				match.organizationHourlyRate.$gte = input.minBudget;
 			}
 			if (input.maxBudget !== undefined) {
-				match.startingRate.$lte = input.maxBudget;
+				match.organizationHourlyRate.$lte = input.maxBudget;
 			}
 		}
 
@@ -519,8 +569,8 @@ export class OrganizationService {
 
 		// Only show contact info (email, phone) if user is logged in
 		if (!userId) {
-			org.email = null;
-			org.phone = null;
+			org.organizationEmail = null;
+			org.organizationPhoneNumber = null;
 		}
 
 		// Normalize subCategory to array
@@ -551,7 +601,7 @@ export class OrganizationService {
 			match.$or = [
 				{ orgCountry: { $regex: input.location, $options: 'i' } },
 				{ orgCity: { $regex: input.location, $options: 'i' } },
-				{ location: { $regex: input.location, $options: 'i' } },
+				{ organizationLocation: { $regex: input.location, $options: 'i' } },
 			];
 		}
 
@@ -560,12 +610,12 @@ export class OrganizationService {
 		}
 
 		if (input.minBudget !== undefined || input.maxBudget !== undefined) {
-			match.startingRate = {};
+			match.organizationHourlyRate = {};
 			if (input.minBudget !== undefined) {
-				match.startingRate.$gte = input.minBudget;
+				match.organizationHourlyRate.$gte = input.minBudget;
 			}
 			if (input.maxBudget !== undefined) {
-				match.startingRate.$lte = input.maxBudget;
+				match.organizationHourlyRate.$lte = input.maxBudget;
 			}
 		}
 
@@ -582,7 +632,7 @@ export class OrganizationService {
 				sortOrder = { orgResponseTimeAvg: 1 };
 				break;
 			case 'startingRate':
-				sortOrder = { startingRate: 1 };
+				sortOrder = { organizationHourlyRate: 1 };
 				break;
 			default:
 				sortOrder = { orgAverageRating: -1 };
@@ -642,6 +692,13 @@ export class OrganizationService {
 	): Promise<Organization> {
 		const userIdObj = shapeIntoMongoObjectId(userId);
 
+		// Strip out fields that shouldn't be in the input (set by backend)
+		const cleanInput = { ...input } as any;
+		delete cleanInput.deletedAt;
+		delete cleanInput.updatedAt;
+		delete cleanInput.orgOwnerUserId;
+		delete cleanInput.createdAt;
+
 		// Verify the user exists and is a BUYER
 		const user = await this.userModel.findById(userIdObj).exec();
 		if (!user) {
@@ -651,43 +708,77 @@ export class OrganizationService {
 			throw new BadRequestException('Only BUYER users can use this endpoint.');
 		}
 
+		// Fields to explicitly unset for buyer organizations (provider-specific fields)
+		// These fields should NOT exist in buyer organizations
+		const fieldsToUnset = [
+			'orgTotalProjects',
+			'orgResponseTimeAvg',
+			'orgVerified',
+			'orgSkills',
+			'orgAverageRating',
+			'orgTotalLikes',
+			'orgTotalViews',
+			'organizationImage',
+			'categoryId',
+			'subCategory',
+			'organizationHourlyRate',
+			'organizationTeamSize',
+			'organizationSpecialties',
+			'industries',
+			'minProjectSize',
+			'badges',
+			'reviewsCount',
+			'organizationWebsiteUrl',
+			'organizationEmail',
+			'organizationPhoneNumber',
+			'orgCountry',
+			'orgCity',
+			'orgTaxId',
+			'serviceTitle',
+			'establishmentYear',
+			'bio',
+			'avatar',
+			'color',
+			'flag',
+			'socialLinks',
+		];
+
 		// Check if the user already has a BUYER organization
 		const existingOrg = await this.organizationModel
 			.findOne({ orgOwnerUserId: userIdObj, orgType: 'BUYER' })
 			.exec();
 
 		if (existingOrg) {
-			// UPDATE existing organization
+			// UPDATE existing buyer organization - only buyer-relevant fields
 			const updateData: any = {};
-			if (input.orgName) updateData.orgName = input.orgName;
-			if (input.orgIndustry !== undefined) updateData.orgIndustry = input.orgIndustry;
-			if (input.location !== undefined) updateData.location = input.location;
-			if (input.orgDescription !== undefined) updateData.orgDescription = input.orgDescription;
-			if (input.orgWebsiteUrl !== undefined) updateData.orgWebsiteUrl = input.orgWebsiteUrl;
-			if (input.orgLogoImages !== undefined) updateData.orgLogoImages = input.orgLogoImages;
+			if (cleanInput.organizationName) updateData.organizationName = cleanInput.organizationName;
+			if (cleanInput.organizationIndustry !== undefined) updateData.organizationIndustry = cleanInput.organizationIndustry;
+			if (cleanInput.organizationLocation !== undefined) updateData.organizationLocation = cleanInput.organizationLocation;
+			if (cleanInput.organizationDescription !== undefined) updateData.organizationDescription = cleanInput.organizationDescription;
+			if (cleanInput.budgetRange !== undefined) updateData.budgetRange = cleanInput.budgetRange;
 
 			// Check for unique name conflict (if changing name)
-			if (input.orgName && input.orgName !== existingOrg.orgName) {
+			if (cleanInput.organizationName && cleanInput.organizationName !== existingOrg.organizationName) {
 				const nameConflict = await this.organizationModel
-					.findOne({ orgName: input.orgName, _id: { $ne: existingOrg._id } })
+					.findOne({ organizationName: cleanInput.organizationName, _id: { $ne: existingOrg._id } })
 					.exec();
 				if (nameConflict) {
 					throw new BadRequestException('Organization with this name already exists.');
 				}
 			}
 
-			// Check for unique website conflict (if changing website)
-			if (input.orgWebsiteUrl && input.orgWebsiteUrl !== existingOrg.orgWebsiteUrl) {
-				const websiteConflict = await this.organizationModel
-					.findOne({ orgWebsiteUrl: input.orgWebsiteUrl, _id: { $ne: existingOrg._id } })
-					.exec();
-				if (websiteConflict) {
-					throw new BadRequestException('Organization with this website URL already exists.');
-				}
-			}
+			// Always update updatedAt timestamp
+			updateData.updatedAt = new Date();
+
+			// Build unset object
+			const unsetData = fieldsToUnset.reduce((acc, field) => ({ ...acc, [field]: '' }), {});
 
 			const result = await this.organizationModel
-				.findByIdAndUpdate(existingOrg._id, updateData, { new: true })
+				.findByIdAndUpdate(
+					existingOrg._id,
+					{ $set: updateData, $unset: unsetData },
+					{ new: true }
+				)
 				.exec();
 
 			if (!result) {
@@ -699,42 +790,37 @@ export class OrganizationService {
 			// CREATE new buyer organization
 
 			// Check for unique name
-			const nameConflict = await this.organizationModel.findOne({ orgName: input.orgName }).exec();
+			const nameConflict = await this.organizationModel.findOne({ organizationName: cleanInput.organizationName }).exec();
 			if (nameConflict) {
 				throw new BadRequestException('Organization with this name already exists.');
 			}
 
-			// Check for unique website (if provided)
-			if (input.orgWebsiteUrl) {
-				const websiteConflict = await this.organizationModel
-					.findOne({ orgWebsiteUrl: input.orgWebsiteUrl })
-					.exec();
-				if (websiteConflict) {
-					throw new BadRequestException('Organization with this website URL already exists.');
-				}
-			}
+			// No website URL check needed for buyers (not a buyer field)
 
+			// Clean buyer organization data - only essential fields
+			// Structured in proper order: _id, orgType, orgOwnerUserId, organization fields, budgetRange, timestamps
 			const orgData = {
 				orgType: 'BUYER',
 				orgStatus: OrganizationStatus.ACTIVE,
-				orgName: input.orgName,
-				orgIndustry: input.orgIndustry,
-				location: input.location,
-				orgDescription: input.orgDescription,
-				orgWebsiteUrl: input.orgWebsiteUrl || null,
-				orgLogoImages: input.orgLogoImages || [],
 				orgOwnerUserId: userIdObj,
-				orgVerified: false,
-				orgTotalProjects: 0,
-				orgResponseTimeAvg: 0,
-				orgAverageRating: 0,
-				orgTotalLikes: 0,
-				orgTotalViews: 0,
-				orgSkills: [],
+				organizationName: cleanInput.organizationName,
+				organizationIndustry: cleanInput.organizationIndustry,
+				organizationLocation: cleanInput.organizationLocation,
+				organizationDescription: cleanInput.organizationDescription,
+				budgetRange: cleanInput.budgetRange || undefined,
+				// createdAt and updatedAt will be added automatically by Mongoose timestamps
 			};
 
 			try {
 				const result = await this.organizationModel.create(orgData);
+				
+				// Remove provider-specific fields from buyer organization
+				const unsetData = fieldsToUnset.reduce((acc, field) => ({ ...acc, [field]: '' }), {});
+				const cleanedResult = await this.organizationModel.findByIdAndUpdate(
+					result._id,
+					{ $unset: unsetData },
+					{ new: true }
+				).exec();
 
 				// Increment userOrgCount for the creator
 				await this.userModel.findByIdAndUpdate(
@@ -743,12 +829,21 @@ export class OrganizationService {
 					{ new: true },
 				).exec();
 
-				return this.normalizeOrganizationFields(result.toObject());
+				return this.normalizeOrganizationFields(cleanedResult.toObject());
 			} catch (err) {
 				console.log('Error, createOrUpdateBuyerOrganization:', err.message);
 				if (err.code === 11000) {
 					const field = Object.keys(err.keyPattern)[0];
-					throw new BadRequestException(`Organization with this ${field} already exists.`);
+					// Handle old index name (orgName) vs new field name (organizationName)
+					if (field === 'orgName' || field === 'organizationName') {
+						throw new BadRequestException('Organization with this name already exists. Please choose a different name.');
+					} else if (field === 'orgTaxId') {
+						throw new BadRequestException('Organization with this tax ID already exists.');
+					} else if (field === 'organizationWebsiteUrl' || field === 'orgWebsiteUrl') {
+						throw new BadRequestException('Organization with this website URL already exists.');
+					} else {
+						throw new BadRequestException(`Organization with this ${field} already exists.`);
+					}
 				}
 				throw new BadRequestException(err.message || Message.CREATE_FAILED);
 			}

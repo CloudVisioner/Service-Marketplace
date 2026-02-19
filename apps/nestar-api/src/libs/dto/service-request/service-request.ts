@@ -29,11 +29,8 @@ export class ServiceRequest {
 	@Field(() => String, { nullable: true })
 	reqSubCategory?: string;
 
-	@Field(() => Number)
-	reqBudgetMin: number;
-
-	@Field(() => Number, { nullable: true })
-	reqBudgetMax?: number;
+	@Field(() => String)
+	reqBudgetRange: string; // e.g., "$3,500", "$1,200", "Contact to discuss"
 
 	@Field(() => Date)
 	reqDeadline: Date;

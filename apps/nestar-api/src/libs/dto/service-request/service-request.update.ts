@@ -31,12 +31,8 @@ export class ServiceRequestUpdate {
 	reqSubCategory?: string;
 
 	@IsOptional()
-	@Field(() => Number, { nullable: true })
-	reqBudgetMin?: number;
-
-	@IsOptional()
-	@Field(() => Number, { nullable: true })
-	reqBudgetMax?: number;
+	@Field(() => String, { nullable: true })
+	reqBudgetRange?: string; // e.g., "$3,500", "$1,200", "Contact to discuss"
 
 	@IsOptional()
 	@Field(() => Date, { nullable: true })

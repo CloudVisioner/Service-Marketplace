@@ -27,12 +27,8 @@ export class ServiceRequestInput {
 	reqSubCategory?: string;
 
 	@IsNotEmpty()
-	@Field(() => Number)
-	reqBudgetMin: number;
-
-	@IsOptional()
-	@Field(() => Number, { nullable: true })
-	reqBudgetMax?: number;
+	@Field(() => String)
+	reqBudgetRange: string; // e.g., "$3,500", "$1,200", "Contact to discuss"
 
 	@IsNotEmpty()
 	@Field(() => Date)
@@ -121,7 +117,7 @@ export class BuyerServiceRequestFilterInput {
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	sortBy?: string; // "createdAt", "deadline", "budgetMin"
+	sortBy?: string; // "createdAt", "deadline", "budgetRange"
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })

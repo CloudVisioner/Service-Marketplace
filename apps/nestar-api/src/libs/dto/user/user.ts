@@ -41,12 +41,6 @@ export class User {
 	userOrganization?: Organization;
 
 	@Field(() => String, { nullable: true })
-	userCountry?: string;
-
-	@Field(() => String, { nullable: true })
-	userCity?: string;
-
-	@Field(() => String, { nullable: true })
 	userDescription?: string;
 
 	@Field(() => [String], { nullable: true })

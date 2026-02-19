@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, InternalServerErrorException } from '@
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { User, Users, SignupResponse } from '../../libs/dto/user/user';
-import { LoginInput, UserInput, UsersInquiry, SignupInput } from '../../libs/dto/user/user.input';
+import { LoginInput, UserInput, UsersInquiry, SignupInput, ChangePasswordInput } from '../../libs/dto/user/user.input';
 import { UserStatus, UserRole, UserAuthType } from '../../libs/enums/user.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
@@ -339,5 +339,40 @@ export class UserService {
 		const result: User = await this.userModel.findOneAndUpdate({ _id: input._id }, input, { new: true }).exec();
 		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
 		return result;
+	}
+
+	/**
+	 * Changes user password after verifying current password.
+	 * Security: Verifies current password before allowing change.
+	 */
+	public async changeMyPassword(userId: ObjectId, input: ChangePasswordInput): Promise<void> {
+		const { currentPassword, newPassword } = input;
+
+		// Get user with password field
+		const userWithPassword = await this.userModel
+			.findById(userId)
+			.select('+userPassword')
+			.exec();
+
+		if (!userWithPassword || userWithPassword.userStatus !== UserStatus.ACTIVE) {
+			throw new BadRequestException('User not found or inactive.');
+		}
+
+		// Verify current password
+		const isMatch = await this.authService.comparePassword(
+			currentPassword,
+			userWithPassword.userPassword,
+		);
+		if (!isMatch) {
+			throw new BadRequestException('Current password is incorrect.');
+		}
+
+		// Hash new password
+		const hashedNewPassword = await this.authService.hashPassword(newPassword);
+
+		// Update password
+		await this.userModel
+			.findByIdAndUpdate(userId, { userPassword: hashedNewPassword })
+			.exec();
 	}
 }

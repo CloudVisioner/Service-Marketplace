@@ -56,18 +56,19 @@ const OrganizationSchema = new Schema(
 			ref: 'User',
 		},
 
-		orgName: {
+		organizationName: {
 			type: String,
 			required: true,
-			index: { unique: true },
+			unique: true,
+			sparse: false,
 		},
 
-		orgDescription: {
+		organizationDescription: {
 			type: String,
 			required: false,
 		},
 
-		orgIndustry: {
+		organizationIndustry: {
 			type: String,
 			required: false,
 		},
@@ -90,7 +91,7 @@ const OrganizationSchema = new Schema(
 			required: true,
 		},
 
-		orgLogoImages: {
+		organizationImage: {
 			type: [String],
 			default: [],
 			required: false,
@@ -102,10 +103,11 @@ const OrganizationSchema = new Schema(
 			index: { unique: true, sparse: true },
 		},
 
-		orgWebsiteUrl: {
+		organizationWebsiteUrl: {
 			type: String,
 			required: false,
-			index: { unique: true, sparse: true },
+			unique: true,
+			sparse: true,
 		},
 
 		// Provider marketplace fields
@@ -143,7 +145,7 @@ const OrganizationSchema = new Schema(
 			type: String,
 		},
 
-		startingRate: {
+		organizationHourlyRate: {
 			type: Number,
 			default: 0,
 		},
@@ -152,12 +154,12 @@ const OrganizationSchema = new Schema(
 			type: Number,
 		},
 
-		orgTeamSize: {
+		organizationTeamSize: {
 			type: Number,
 			default: 0,
 		},
 
-		orgSpecialities: {
+		organizationSpecialties: {
 			type: [String],
 			default: [],
 		},
@@ -170,6 +172,10 @@ const OrganizationSchema = new Schema(
 		minProjectSize: {
 			type: Number,
 			default: 0,
+		},
+
+		budgetRange: {
+			type: String,
 		},
 
 		bio: {
@@ -189,7 +195,7 @@ const OrganizationSchema = new Schema(
 			type: String,
 		},
 
-		location: {
+		organizationLocation: {
 			type: String,
 		},
 
@@ -203,11 +209,11 @@ const OrganizationSchema = new Schema(
 			required: true,
 		},
 
-		email: {
+		organizationEmail: {
 			type: String,
 		},
 
-		phone: {
+		organizationPhoneNumber: {
 			type: String,
 		},
 
@@ -226,8 +232,11 @@ const OrganizationSchema = new Schema(
 
 // Compound text index for search functionality
 OrganizationSchema.index(
-	{ orgName: 'text', orgDescription: 'text', orgCountry: 'text', orgCity: 'text' },
+	{ organizationName: 'text', organizationDescription: 'text', orgCountry: 'text', orgCity: 'text' },
 	{ name: 'org_search_text_index' }
 );
+
+// Drop old orgName index if it exists (migration helper)
+// Run this once in MongoDB: db.organizations.dropIndex("orgName_1")
 
 export default OrganizationSchema;

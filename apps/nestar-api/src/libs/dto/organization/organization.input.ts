@@ -15,7 +15,7 @@ export class OrganizationInput {
 
 	@IsNotEmpty()
 	@Field(() => String)
-	orgName: string;
+	organizationName: string;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
@@ -27,15 +27,15 @@ export class OrganizationInput {
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	orgWebsiteUrl?: string;
+	organizationWebsiteUrl?: string;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	orgDescription?: string;
+	organizationDescription?: string;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	orgIndustry?: string;
+	organizationIndustry?: string;
 
 	@IsOptional()
 	@Field(() => [String], { nullable: true })
@@ -47,44 +47,80 @@ export class OrganizationInput {
 
 	@IsOptional()
 	@Field(() => [String], { nullable: true })
-	orgLogoImages?: string[];
+	organizationImage?: string[];
 
 	@IsOptional()
 	@Min(0)
 	@Field(() => Int, { nullable: true })
-	orgTeamSize?: number;
+	organizationTeamSize?: number;
 
 	@IsOptional()
 	@Field(() => [String], { nullable: true })
-	orgSpecialities?: string[];
+	organizationSpecialties?: string[];
+
+	@IsOptional()
+	@Field(() => Number, { nullable: true })
+	organizationHourlyRate?: number;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationLocation?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationContactEmail?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationPhoneNumber?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	budgetRange?: string;
 }
 
 @InputType()
 export class BuyerOrganizationInput {
+	// REQUIRED FIELDS (Buyer-specific only)
 	@IsNotEmpty()
 	@Field(() => String)
-	orgName: string;
+	organizationName: string;
 
 	@IsNotEmpty()
 	@Field(() => String)
-	orgIndustry: string;
+	organizationIndustry: string;
 
 	@IsNotEmpty()
 	@Field(() => String)
-	location: string;
+	organizationLocation: string;
 
 	@IsNotEmpty()
 	@MaxLength(2000)
 	@Field(() => String)
-	orgDescription: string;
+	organizationDescription: string;
+
+	// OPTIONAL FIELDS (Buyer-specific only)
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	budgetRange?: string;
+
+	// These fields are ignored (set automatically by backend)
+	// Added here to prevent GraphQL validation errors when frontend sends them
+	@IsOptional()
+	@Field(() => Date, { nullable: true })
+	deletedAt?: Date;
+
+	@IsOptional()
+	@Field(() => Date, { nullable: true })
+	updatedAt?: Date;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	orgWebsiteUrl?: string;
+	orgOwnerUserId?: string;
 
 	@IsOptional()
-	@Field(() => [String], { nullable: true })
-	orgLogoImages?: string[];
+	@Field(() => Date, { nullable: true })
+	createdAt?: Date;
 }
 
 @InputType()

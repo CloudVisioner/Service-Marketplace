@@ -24,7 +24,7 @@ export class Organization {
 	orgCity?: string;
 
 	@Field(() => String, { nullable: true })
-	orgWebsiteUrl?: string;
+	organizationWebsiteUrl?: string;
 
 	@Field(() => Int)
 	orgTotalProjects: number;
@@ -42,13 +42,13 @@ export class Organization {
 	orgOwnerUserId: mongoose.ObjectId;
 
 	@Field(() => String)
-	orgName: string;
+	organizationName: string;
 
 	@Field(() => String, { nullable: true })
-	orgDescription?: string;
+	organizationDescription?: string;
 
 	@Field(() => String, { nullable: true })
-	orgIndustry?: string;
+	organizationIndustry?: string;
 
 	@Field(() => Int)
 	orgAverageRating: number;
@@ -60,7 +60,7 @@ export class Organization {
 	orgTotalViews: number;
 
 	@Field(() => [String])
-	orgLogoImages: string[];
+	organizationImage: string[];
 
 	@Field(() => String, { nullable: true })
 	orgTaxId?: string;
@@ -76,22 +76,25 @@ export class Organization {
 	serviceTitle?: string;
 
 	@Field(() => Number, { nullable: true })
-	startingRate?: number;
+	organizationHourlyRate?: number;
 
 	@Field(() => Int, { nullable: true })
 	establishmentYear?: number;
 
 	@Field(() => Int, { nullable: true })
-	orgTeamSize?: number;
+	organizationTeamSize?: number;
 
 	@Field(() => [String], { nullable: true })
-	orgSpecialities?: string[];
+	organizationSpecialties?: string[];
 
 	@Field(() => [String], { nullable: true })
 	industries?: string[];
 
 	@Field(() => Number, { nullable: true })
 	minProjectSize?: number;
+
+	@Field(() => String, { nullable: true })
+	budgetRange?: string;
 
 	@Field(() => String, { nullable: true })
 	bio?: string;
@@ -106,7 +109,7 @@ export class Organization {
 	color?: string;
 
 	@Field(() => String, { nullable: true })
-	location?: string;
+	organizationLocation?: string;
 
 	@Field(() => String, { nullable: true })
 	flag?: string;
@@ -115,10 +118,13 @@ export class Organization {
 	reviewsCount?: number;
 
 	@Field(() => String, { nullable: true })
-	email?: string;
+	organizationEmail?: string;
 
 	@Field(() => String, { nullable: true })
-	phone?: string;
+	organizationContactEmail?: string; // Alias for organizationEmail
+
+	@Field(() => String, { nullable: true })
+	organizationPhoneNumber?: string;
 
 	@Field(() => String, { nullable: true })
 	linkedIn?: string;

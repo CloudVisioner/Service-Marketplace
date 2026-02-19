@@ -9,7 +9,48 @@ export class OrganizationUpdate {
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	orgName?: string;
+	organizationName?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationIndustry?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationLocation?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationDescription?: string;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	organizationSpecialties?: string[];
+
+	@IsOptional()
+	@Field(() => Number, { nullable: true })
+	organizationHourlyRate?: number;
+
+	@IsOptional()
+	@Min(0)
+	@Field(() => Int, { nullable: true })
+	organizationTeamSize?: number;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationWebsiteUrl?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationContactEmail?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationPhoneNumber?: string;
+
+	@IsOptional()
+	@Field(() => [String], { nullable: true })
+	organizationImage?: string[];
 
 	@IsOptional()
 	@Field(() => [String], { nullable: true })
@@ -18,10 +59,6 @@ export class OrganizationUpdate {
 	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	subCategory?: string[]; // Array of subcategories
-
-	@IsOptional()
-	@Field(() => Number, { nullable: true })
-	startingRate?: number;
 
 	@IsOptional()
 	@Field(() => Number, { nullable: true })
@@ -36,18 +73,6 @@ export class OrganizationUpdate {
 	orgCity?: string;
 
 	@IsOptional()
-	@Field(() => String, { nullable: true })
-	orgWebsiteUrl?: string;
-
-	@IsOptional()
-	@Field(() => String, { nullable: true })
-	orgDescription?: string;
-
-	@IsOptional()
-	@Field(() => String, { nullable: true })
-	orgIndustry?: string;
-
-	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	orgSkills?: string[]; // Array of skills
 
@@ -56,15 +81,6 @@ export class OrganizationUpdate {
 	orgTaxId?: string;
 
 	@IsOptional()
-	@Field(() => [String], { nullable: true })
-	orgLogoImages?: string[];
-
-	@IsOptional()
-	@Min(0)
-	@Field(() => Int, { nullable: true })
-	orgTeamSize?: number;
-
-	@IsOptional()
-	@Field(() => [String], { nullable: true })
-	orgSpecialities?: string[];
+	@Field(() => String, { nullable: true })
+	budgetRange?: string;
 }

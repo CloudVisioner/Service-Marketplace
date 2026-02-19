@@ -71,14 +71,6 @@ export class UserInput {
 	userOrganizationId?: string;
 
 	@IsOptional()
-	@Field(() => String, { nullable: true })
-	userCountry?: string;
-
-	@IsOptional()
-	@Field(() => String, { nullable: true })
-	userCity?: string;
-
-	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	userLanguages?: string[];
 }
@@ -136,4 +128,20 @@ export class UsersInquiry {
 	@IsNotEmpty()
 	@Field(() => UISearch)
 	search: UISearch;
+}
+
+@InputType()
+export class ChangePasswordInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	currentPassword: string;
+
+	@IsNotEmpty()
+	@Length(5, 12)
+	@Field(() => String)
+	newPassword: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	securityCode?: string; // Optional security number for verification
 }
