@@ -31,6 +31,39 @@ export const CREATE_SERVICE_REQUEST = gql`
 `;
 
 // ============================================================================
+// UPDATE SERVICE REQUEST (Edit existing request)
+// ============================================================================
+// Mutation: updateServiceRequest
+// Input: ServiceRequestUpdate
+// Role: BUYER only
+// Note: Only editable when request status is DRAFT or OPEN
+export const UPDATE_SERVICE_REQUEST = gql`
+  mutation UpdateServiceRequest($input: ServiceRequestUpdate!) {
+    updateServiceRequest(input: $input) {
+      _id
+      reqTitle
+      reqDescription
+      reqBuyerOrgId
+      reqCategory
+      reqSubCategory
+      reqBudgetRange
+      reqDeadline
+      reqUrgency
+      reqSkillsNeeded
+      reqAttachments
+      reqStatus
+      reqTotalLikes
+      reqTotalViews
+      reqTotalQuotes
+      reqNewQuotesCount
+      reqCreatedByUserId
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+// ============================================================================
 // GET BUYER SERVICE REQUESTS (List - for "My Service Requests" page)
 // ============================================================================
 // Query: getBuyerServiceRequests
@@ -121,6 +154,57 @@ export const GET_SERVICE_REQUEST = gql`
 `;
 
 // ============================================================================
+// GET ALL SERVICE REQUESTS (Browse - for Providers to see buyer requests)
+// ============================================================================
+// Query: getServiceRequests
+// Returns paginated list of all service requests (for providers to browse)
+// Role: Any authenticated user (including PROVIDER)
+export const GET_SERVICE_REQUESTS = gql`
+  query GetServiceRequests($input: ServiceRequestInquiry!) {
+    getServiceRequests(input: $input) {
+      list {
+        _id
+        reqTitle
+        reqDescription
+        reqBuyerOrgId
+        reqCategory
+        reqSubCategory
+        reqBudgetRange
+        reqDeadline
+        reqUrgency
+        reqSkillsNeeded
+        reqAttachments
+        reqStatus
+        reqTotalLikes
+        reqTotalViews
+        reqTotalQuotes
+        reqNewQuotesCount
+        reqCreatedByUserId
+        createdAt
+        updatedAt
+        reqBuyerOrgData {
+          _id
+          organizationName
+          organizationIndustry
+          organizationLocation
+          organizationDescription
+          organizationImage
+          organizationContactEmail
+        }
+        reqCreatedByUserData {
+          _id
+          userNick
+          userEmail
+        }
+      }
+      metaCounter {
+        total
+      }
+    }
+  }
+`;
+
+// ============================================================================
 // GET MY SERVICE REQUESTS (Alternative - with pagination)
 // ============================================================================
 // Query: getMyServiceRequests
@@ -198,7 +282,7 @@ export const GET_MY_SERVICE_REQUESTS = gql`
  *   variables: {
  *     input: {
  *       // OPTIONAL FILTERS (all fields are optional):
- *       status: "OPEN",              // Filter by status: "DRAFT" | "PUBLISHED" | "OPEN" | "IN_PROGRESS" | "CLOSED" | "CANCELLED"
+ *       status: "OPEN",              // Filter by status: "DRAFT" | "OPEN" | "ACTIVE" | "COMPLETED" | "CLOSED" | "CANCELLED"
  *       category: "BUSINESS_SERVICES", // Filter by category
  *       page: 1,                      // Page number (default: 1)
  *       limit: 10,                    // Items per page (default: 10)
@@ -295,4 +379,77 @@ export const GET_MY_SERVICE_REQUESTS = gql`
  *     }
  *   }
  * });
+ */
+
+/**
+ * UPDATE SERVICE REQUEST - Frontend Usage:
+ * 
+ * IMPORTANT: Only editable when request status is DRAFT or OPEN.
+ * All fields are optional - only provided fields will be updated.
+ * 
+ * const { data, loading, error } = await client.mutate({
+ *   mutation: UPDATE_SERVICE_REQUEST,
+ *   variables: {
+ *     input: {
+ *       _id: "69970318229d239324d2afaa",  // REQUIRED - Service Request ID
+ *       
+ *       // EDITABLE FIELDS (all optional):
+ *       reqTitle: "Updated Title",                    // Title
+ *       reqDescription: "Updated description...",     // Description / brief
+ *       reqBudgetRange: "$5,000",                     // Budget (amount and currency)
+ *       reqDeadline: "2024-12-31T23:59:59.000Z",     // Deadline / timeline
+ *       reqCategory: "BUSINESS_SERVICES",            // Category / service type
+ *       reqSubCategory: "HR_AND_OPERATIONS",          // Optional subcategory
+ *       reqUrgency: "URGENT",                         // Urgency: "NORMAL" | "URGENT" | "CRITICAL"
+ *       reqSkillsNeeded: ["Skill 1", "Skill 2"],      // Required skills (add or remove)
+ *       reqAttachments: ["path/to/file.pdf"]         // Optional attachments
+ *     }
+ *   },
+ *   context: {
+ *     headers: {
+ *       authorization: `Bearer ${token}`
+ *     }
+ *   }
+ * });
+ * 
+ * // Example: Update only title and budget
+ * const { data } = await client.mutate({
+ *   mutation: UPDATE_SERVICE_REQUEST,
+ *   variables: {
+ *     input: {
+ *       _id: "69970318229d239324d2afaa",
+ *       reqTitle: "New Title",
+ *       reqBudgetRange: "$10,000"
+ *     }
+ *   },
+ *   context: {
+ *     headers: {
+ *       authorization: `Bearer ${token}`
+ *     }
+ *   }
+ * });
+ * 
+ * // Example: Update skills (replace entire array)
+ * const { data } = await client.mutate({
+ *   mutation: UPDATE_SERVICE_REQUEST,
+ *   variables: {
+ *     input: {
+ *       _id: "69970318229d239324d2afaa",
+ *       reqSkillsNeeded: ["React", "TypeScript", "Node.js"]  // Replaces all existing skills
+ *     }
+ *   },
+ *   context: {
+ *     headers: {
+ *       authorization: `Bearer ${token}`
+ *     }
+ *   }
+ * });
+ * 
+ * // Error handling:
+ * // - If request status is not DRAFT or OPEN, you'll get:
+ * //   "Cannot edit service request. Editing is only allowed when status is DRAFT or OPEN."
+ * // - If you don't own the request, you'll get:
+ * //   "You can only update service requests from your own organization."
+ * // - If title already exists (for active requests), you'll get:
+ * //   "A service request with the title '...' already exists and is currently active."
  */

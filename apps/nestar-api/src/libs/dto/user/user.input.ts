@@ -145,3 +145,27 @@ export class ChangePasswordInput {
 	@Field(() => String, { nullable: true })
 	securityCode?: string; // Optional security number for verification
 }
+
+/**
+ * Input for updating provider user profile.
+ * Provider-specific user fields only.
+ */
+@InputType()
+export class UpdateProviderProfileInput {
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	providerFullName?: string; // Maps to userDescription or new field
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	providerDisplayName?: string; // Maps to userNick
+
+	@IsOptional()
+	@IsEmail()
+	@Field(() => String, { nullable: true })
+	providerEmail?: string; // Maps to userEmail
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	providerPhone?: string; // Maps to userPhone
+}

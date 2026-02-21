@@ -3,12 +3,18 @@ import { IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 import { ServiceRequestStatus, Urgency } from '../../enums/service-request.enum';
 import { ObjectId } from 'mongoose';
 
+/**
+ * Input type for updating a service request.
+ * Only editable when request status is DRAFT or OPEN.
+ * All fields are optional - only provided fields will be updated.
+ */
 @InputType()
 export class ServiceRequestUpdate {
 	@IsNotEmpty()
 	@Field(() => String)
 	_id: ObjectId;
 
+	// Editable fields (only when status is DRAFT or OPEN)
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	reqTitle?: string;
@@ -17,10 +23,6 @@ export class ServiceRequestUpdate {
 	@MaxLength(2000)
 	@Field(() => String, { nullable: true })
 	reqDescription?: string;
-
-	@IsOptional()
-	@Field(() => ServiceRequestStatus, { nullable: true })
-	reqStatus?: ServiceRequestStatus;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
@@ -46,6 +48,8 @@ export class ServiceRequestUpdate {
 	@Field(() => [String], { nullable: true })
 	reqSkillsNeeded?: string[];
 
+	// Note: reqStatus is NOT editable via this mutation - use updateServiceRequestStatus instead
+	// Note: reqAttachments can be updated but is not in the main editable fields list per requirements
 	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	reqAttachments?: string[];

@@ -3,6 +3,7 @@ import { UseGuards } from '@nestjs/common';
 import { ServiceRequestService } from './service-request.service';
 import { BuyerDashboardStats, BuyerServiceRequests, ServiceRequest, ServiceRequests } from '../../libs/dto/service-request/service-request';
 import { BuyerServiceRequestFilterInput, ServiceRequestInput, ServiceRequestInquiry } from '../../libs/dto/service-request/service-request.input';
+import { ServiceRequestUpdate } from '../../libs/dto/service-request/service-request.update';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -31,6 +32,22 @@ export class ServiceRequestResolver {
 	): Promise<ServiceRequest> {
 		console.log('Mutation: createServiceRequest');
 		return await this.serviceRequestService.createServiceRequest(userId, input);
+	}
+
+	/**
+	 * Update a service request.
+	 * Only allows editing when request status is DRAFT or OPEN.
+	 * Only the buyer who owns the request can edit it.
+	 */
+	@Roles(UserRole.BUYER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Mutation(() => ServiceRequest)
+	public async updateServiceRequest(
+		@Args('input') input: ServiceRequestUpdate,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<ServiceRequest> {
+		console.log('Mutation: updateServiceRequest');
+		return await this.serviceRequestService.updateServiceRequest(userId, input);
 	}
 
 	@Roles(UserRole.BUYER)

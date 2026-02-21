@@ -1,12 +1,40 @@
 import { gql } from 'graphql-tag';
 
 // ============================================================================
-// GET MY PROFILE (Get current user's profile)
+// GET MY PROFILE (Get current user's profile - Provider-specific)
+// ============================================================================
+// Query: getMyProfile
+// Returns: user profile data for the logged-in provider
+// Role: PROVIDER only
+// Note: No userId needed - uses authenticated user's ID automatically
+export const GET_MY_PROFILE = gql`
+  query GetMyProfile {
+    getMyProfile {
+      _id
+      userNick
+      userEmail
+      userPhone
+      userImage
+      userDescription
+      userRole
+      userStatus
+      userAuthType
+      userTotalServiceRequests
+      userTotalQuotes
+      userOrgCount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+// ============================================================================
+// GET USER (Get any user's profile by userId)
 // ============================================================================
 // Query: getUser
 // Returns full user profile information
-export const GET_MY_PROFILE = gql`
-  query GetMyProfile($userId: String!) {
+export const GET_USER = gql`
+  query GetUser($userId: String!) {
     getUser(userId: $userId) {
       _id
       userNick
@@ -27,7 +55,29 @@ export const GET_MY_PROFILE = gql`
 `;
 
 // ============================================================================
-// UPDATE MY PROFILE (Update profile information)
+// UPDATE PROVIDER PROFILE (Update provider user profile)
+// ============================================================================
+// Mutation: updateProviderProfile
+// Input: UpdateProviderProfileInput
+// Role: PROVIDER only
+export const UPDATE_PROVIDER_PROFILE = gql`
+  mutation UpdateProviderProfile($input: UpdateProviderProfileInput!) {
+    updateProviderProfile(input: $input) {
+      _id
+      userNick
+      userEmail
+      userPhone
+      userDescription
+      userRole
+      userStatus
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+// ============================================================================
+// UPDATE MY PROFILE (Update profile information - General)
 // ============================================================================
 // Mutation: updateUser
 // Updates user profile (image, display name, email, phone, etc.)
@@ -111,7 +161,51 @@ export const UPLOAD_PROFILE_IMAGE = gql`
  */
 
 /**
- * UPDATE MY PROFILE - Frontend Usage:
+ * UPDATE PROVIDER PROFILE - Frontend Usage:
+ * 
+ * // Update provider user profile (only send fields you want to change)
+ * const { data } = await client.mutate({
+ *   mutation: UPDATE_PROVIDER_PROFILE,
+ *   variables: {
+ *     input: {
+ *       // ALL FIELDS ARE OPTIONAL:
+ *       providerFullName: "John Doe",        // OPTIONAL → userDescription
+ *       providerDisplayName: "johndoe",      // OPTIONAL → userNick (must be unique)
+ *       providerEmail: "john@example.com",    // OPTIONAL → userEmail (must be unique)
+ *       providerPhone: "+1234567890"        // OPTIONAL → userPhone (must be unique)
+ *     }
+ *   },
+ *   context: {
+ *     headers: {
+ *       authorization: `Bearer ${token}`
+ *     }
+ *   }
+ * });
+ * 
+ * // Example: Update only display name
+ * const { data } = await client.mutate({
+ *   mutation: UPDATE_PROVIDER_PROFILE,
+ *   variables: {
+ *     input: {
+ *       providerDisplayName: "newdisplayname"
+ *     }
+ *   },
+ *   context: {
+ *     headers: {
+ *       authorization: `Bearer ${token}`
+ *     }
+ *   }
+ * });
+ * 
+ * // Field Mappings:
+ * // - providerFullName → userDescription (stored in database)
+ * // - providerDisplayName → userNick (stored in database, must be unique)
+ * // - providerEmail → userEmail (stored in database, must be unique)
+ * // - providerPhone → userPhone (stored in database, must be unique)
+ */
+
+/**
+ * UPDATE MY PROFILE (General - for all users) - Frontend Usage:
  * 
  * // Update profile information (only send fields you want to change)
  * const { data } = await client.mutate({

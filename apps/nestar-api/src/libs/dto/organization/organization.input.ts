@@ -46,8 +46,8 @@ export class OrganizationInput {
 	orgTaxId?: string;
 
 	@IsOptional()
-	@Field(() => [String], { nullable: true })
-	organizationImage?: string[];
+	@Field(() => String, { nullable: true })
+	organizationImage?: string; // Single image URL (string, not array)
 
 	@IsOptional()
 	@Min(0)
@@ -121,6 +121,11 @@ export class BuyerOrganizationInput {
 	@IsOptional()
 	@Field(() => Date, { nullable: true })
 	createdAt?: Date;
+
+	// OPTIONAL FIELDS (Buyer-specific only)
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationImage?: string; // Single image URL (string, not array) - NEW: Now supported for buyers
 }
 
 @InputType()
@@ -216,4 +221,78 @@ export class ProviderSortInput {
 	@IsOptional()
 	@Field(() => Number, { nullable: true })
 	maxBudget?: number;
+}
+
+/**
+ * Input for creating a provider organization profile.
+ * Provider-specific fields only.
+ */
+@InputType()
+export class ProviderOrganizationInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	organizationName: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationDescription?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationContactEmail?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationCountry?: string;
+
+	@IsOptional()
+	@Field(() => [Category], { nullable: true })
+	organizationCategories?: Category[]; // Array of categories
+
+	@IsOptional()
+	@Field(() => [SubCategory], { nullable: true })
+	organizationSubCategories?: SubCategory[]; // Array of subcategories
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationImage?: string; // Single image URL (string, not array)
+}
+
+/**
+ * Input for updating a provider organization profile.
+ * Provider-specific fields only.
+ */
+@InputType()
+export class UpdateProviderOrganizationInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	organizationId: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationName?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationDescription?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationContactEmail?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationCountry?: string;
+
+	@IsOptional()
+	@Field(() => [Category], { nullable: true })
+	organizationCategories?: Category[]; // Array of categories
+
+	@IsOptional()
+	@Field(() => [SubCategory], { nullable: true })
+	organizationSubCategories?: SubCategory[]; // Array of subcategories
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationImage?: string; // Single image URL (string, not array)
 }

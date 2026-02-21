@@ -60,4 +60,5 @@ uploads
 
 # Documentation files (not uploaded to GitHub)
 *.md
+*.graphql
 !README.md

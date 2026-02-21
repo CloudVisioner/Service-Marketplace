@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, InternalServerErrorException } from '@
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { User, Users, SignupResponse } from '../../libs/dto/user/user';
-import { LoginInput, UserInput, UsersInquiry, SignupInput, ChangePasswordInput } from '../../libs/dto/user/user.input';
+import { LoginInput, UserInput, UsersInquiry, SignupInput, ChangePasswordInput, UpdateProviderProfileInput } from '../../libs/dto/user/user.input';
 import { UserStatus, UserRole, UserAuthType } from '../../libs/enums/user.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
@@ -374,5 +374,155 @@ export class UserService {
 		await this.userModel
 			.findByIdAndUpdate(userId, { userPassword: hashedNewPassword })
 			.exec();
+	}
+
+	/**
+	 * Update provider user profile.
+	 * Only allows updating provider-specific user fields.
+	 */
+	public async updateProviderProfile(userId: ObjectId, input: UpdateProviderProfileInput): Promise<User> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+
+		// Verify user exists and is a PROVIDER
+		const user = await this.userModel.findById(userIdObj).exec();
+		if (!user) {
+			throw new BadRequestException('User not found.');
+		}
+		if (user.userRole !== UserRole.PROVIDER) {
+			throw new BadRequestException('Only PROVIDER users can update provider profiles.');
+		}
+
+		// Build update object with only provided fields
+		const updateData: T = {};
+
+		if (input.providerFullName !== undefined) {
+			// Map providerFullName to userDescription
+			updateData.userDescription = input.providerFullName;
+		}
+		if (input.providerDisplayName !== undefined) {
+			// Check for duplicate userNick if display name is being changed
+			if (input.providerDisplayName !== user.userNick) {
+				const existingNick = await this.userModel
+					.findOne({
+						userNick: input.providerDisplayName,
+						_id: { $ne: userIdObj },
+					})
+					.exec();
+				if (existingNick) {
+					throw new BadRequestException('Display name already exists. Please choose a different name.');
+				}
+			}
+			updateData.userNick = input.providerDisplayName;
+		}
+		if (input.providerEmail !== undefined) {
+			// Check for duplicate email if email is being changed
+			if (input.providerEmail !== user.userEmail) {
+				const existingEmail = await this.userModel
+					.findOne({
+						userEmail: input.providerEmail,
+						_id: { $ne: userIdObj },
+					})
+					.exec();
+				if (existingEmail) {
+					throw new BadRequestException('Email already registered. Please use a different email.');
+				}
+			}
+			updateData.userEmail = input.providerEmail;
+		}
+		if (input.providerPhone !== undefined) {
+			// Check for duplicate phone if phone is being changed
+			if (input.providerPhone !== user.userPhone) {
+				const existingPhone = await this.userModel
+					.findOne({
+						userPhone: input.providerPhone,
+						_id: { $ne: userIdObj },
+					})
+					.exec();
+				if (existingPhone) {
+					throw new BadRequestException('Phone number already registered. Please use a different phone number.');
+				}
+			}
+			updateData.userPhone = input.providerPhone;
+		}
+
+		// If no fields to update, return the existing user
+		if (Object.keys(updateData).length === 0) {
+			return user;
+		}
+
+		const updatedUser = await this.userModel
+			.findByIdAndUpdate(userIdObj, updateData, { new: true })
+			.exec();
+
+		if (!updatedUser) {
+			throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		}
+
+		return updatedUser;
+	}
+
+	/**
+	 * Get current user's profile (for providers).
+	 * Returns the authenticated user's profile data.
+	 */
+	public async getMyProfile(userId: ObjectId): Promise<User> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+
+		const user = await this.userModel.findById(userIdObj).exec();
+		if (!user) {
+			throw new BadRequestException('User not found.');
+		}
+
+		// Get actual counts from database
+		const serviceRequestCount = await this.serviceRequestModel.countDocuments({
+			reqCreatedByUserId: userIdObj,
+		}).exec();
+
+		const quoteCount = await this.quoteModel.countDocuments({
+			quoteCreatedByUserId: userIdObj,
+		}).exec();
+
+		const orgCount = await this.organizationModel.countDocuments({
+			orgOwnerUserId: userIdObj,
+		}).exec();
+
+		const result = await this.userModel
+			.aggregate([
+				{ $match: { _id: userIdObj } },
+				{
+					$lookup: {
+						from: 'organizations',
+						let: { userId: '$_id' },
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$eq: ['$orgOwnerUserId', '$$userId'],
+									},
+								},
+							},
+							{ $limit: 1 },
+						],
+						as: 'userOrganization',
+					},
+				},
+				{
+					$unwind: { path: '$userOrganization', preserveNullAndEmptyArrays: true },
+				},
+				{
+					$addFields: {
+						userTotalServiceRequests: serviceRequestCount || 0,
+						userTotalQuotes: quoteCount || 0,
+						userOrgCount: orgCount || 0,
+					},
+				},
+			])
+			.exec();
+
+		if (!result.length) {
+			throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+		}
+
+		return result[0];
 	}
 }

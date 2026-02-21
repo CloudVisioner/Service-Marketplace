@@ -52,7 +52,7 @@ export class ServiceRequestInput {
 }
 
 @InputType()
-class ServiceRequestSearch {
+export class ServiceRequestSearch {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	reqBuyerOrgId?: ObjectId;

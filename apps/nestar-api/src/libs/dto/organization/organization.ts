@@ -11,14 +11,14 @@ export class Organization {
 	@Field(() => String)
 	_id: mongoose.ObjectId;
 
-	@Field(() => OrganizationType)
-	orgType: OrganizationType;
+	@Field(() => OrganizationType, { nullable: true })
+	organizationType?: OrganizationType; // Maps from orgType in DB - Can be null for old records
 
-	@Field(() => OrganizationStatus)
-	orgStatus: OrganizationStatus;
+	@Field(() => OrganizationStatus, { nullable: true })
+	organizationStatus?: OrganizationStatus; // Maps from orgStatus in DB - Can be null for old records
 
 	@Field(() => String, { nullable: true })
-	orgCountry?: string;
+	organizationCountry?: string; // Maps from orgCountry in DB
 
 	@Field(() => String, { nullable: true })
 	orgCity?: string;
@@ -59,8 +59,8 @@ export class Organization {
 	@Field(() => Int)
 	orgTotalViews: number;
 
-	@Field(() => [String])
-	organizationImage: string[];
+	@Field(() => String, { nullable: true })
+	organizationImage?: string; // Single image URL (string, not array)
 
 	@Field(() => String, { nullable: true })
 	orgTaxId?: string;

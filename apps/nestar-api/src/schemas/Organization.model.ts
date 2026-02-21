@@ -92,8 +92,7 @@ const OrganizationSchema = new Schema(
 		},
 
 		organizationImage: {
-			type: [String],
-			default: [],
+			type: String,
 			required: false,
 		},
 

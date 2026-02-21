@@ -1,7 +1,7 @@
 import { Mutation, Resolver, Query, Args } from '@nestjs/graphql';
 import { UserService } from './user.service';
 import { BadRequestException, InternalServerErrorException, UseGuards } from '@nestjs/common';
-import { LoginInput, UserInput, UsersInquiry, SignupInput, ChangePasswordInput } from '../../libs/dto/user/user.input';
+import { LoginInput, UserInput, UsersInquiry, SignupInput, ChangePasswordInput, UpdateProviderProfileInput } from '../../libs/dto/user/user.input';
 import { User, Users, SignupResponse } from '../../libs/dto/user/user';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AuthUser } from '../auth/decorators/authUser.decorator';
@@ -167,5 +167,34 @@ export class UserResolver {
 		console.log('Mutation: changeMyPassword');
 		await this.userService.changeMyPassword(userId, input);
 		return true;
+	}
+
+	/**
+	 * Get current user's profile (for providers).
+	 * Returns the authenticated user's profile data.
+	 */
+	@Roles(UserRole.PROVIDER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Query(() => User)
+	public async getMyProfile(
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<User> {
+		console.log('Query: getMyProfile');
+		return await this.userService.getMyProfile(userId);
+	}
+
+	/**
+	 * Update provider user profile.
+	 * Only allows updating provider-specific user fields.
+	 */
+	@Roles(UserRole.PROVIDER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Mutation(() => User)
+	public async updateProviderProfile(
+		@Args('input') input: UpdateProviderProfileInput,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<User> {
+		console.log('Mutation: updateProviderProfile');
+		return await this.userService.updateProviderProfile(userId, input);
 	}
 }

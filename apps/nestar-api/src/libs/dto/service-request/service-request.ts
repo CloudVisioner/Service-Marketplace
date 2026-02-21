@@ -11,53 +11,53 @@ export class ServiceRequest {
 	@Field(() => String)
 	_id: mongoose.ObjectId;
 
-	@Field(() => String)
-	reqTitle: string;
+	@Field(() => String, { nullable: true })
+	reqTitle?: string; // Can be null for old records
 
-	@Field(() => String)
-	reqDescription: string;
+	@Field(() => String, { nullable: true })
+	reqDescription?: string; // Can be null for old records
 
-	@Field(() => String)
-	reqBuyerOrgId: mongoose.ObjectId;
+	@Field(() => String, { nullable: true })
+	reqBuyerOrgId?: mongoose.ObjectId; // Can be null for old records
 
-	@Field(() => ServiceRequestStatus)
-	reqStatus: ServiceRequestStatus;
+	@Field(() => ServiceRequestStatus, { nullable: true })
+	reqStatus?: ServiceRequestStatus; // Can be null for old records
 
-	@Field(() => String)
-	reqCategory: string;
+	@Field(() => String, { nullable: true })
+	reqCategory?: string; // Can be null for old records
 
 	@Field(() => String, { nullable: true })
 	reqSubCategory?: string;
 
-	@Field(() => String)
-	reqBudgetRange: string; // e.g., "$3,500", "$1,200", "Contact to discuss"
+	@Field(() => String, { nullable: true })
+	reqBudgetRange?: string; // e.g., "$3,500", "$1,200", "Contact to discuss" - Can be null for old records
 
-	@Field(() => Date)
-	reqDeadline: Date;
+	@Field(() => Date, { nullable: true })
+	reqDeadline?: Date; // Can be null for old records
 
-	@Field(() => Urgency)
-	reqUrgency: Urgency;
+	@Field(() => Urgency, { nullable: true })
+	reqUrgency?: Urgency; // Can be null for old records
 
-	@Field(() => [String])
-	reqSkillsNeeded: string[];
+	@Field(() => [String], { nullable: true })
+	reqSkillsNeeded?: string[]; // Can be null for old records
 
-	@Field(() => [String])
-	reqAttachments: string[];
+	@Field(() => [String], { nullable: true })
+	reqAttachments?: string[]; // Can be null for old records
 
-	@Field(() => Int)
-	reqTotalLikes: number;
+	@Field(() => Int, { nullable: true })
+	reqTotalLikes?: number; // Can be null for old records
 
-	@Field(() => Int)
-	reqTotalViews: number;
+	@Field(() => Int, { nullable: true })
+	reqTotalViews?: number; // Can be null for old records
 
-	@Field(() => Int)
-	reqTotalQuotes: number;
+	@Field(() => Int, { nullable: true })
+	reqTotalQuotes?: number; // Can be null for old records
 
-	@Field(() => Int)
-	reqNewQuotesCount: number;
+	@Field(() => Int, { nullable: true })
+	reqNewQuotesCount?: number; // Can be null for old records
 
-	@Field(() => String)
-	reqCreatedByUserId: mongoose.ObjectId;
+	@Field(() => String, { nullable: true })
+	reqCreatedByUserId?: mongoose.ObjectId; // Can be null for old records
 
 	@Field(() => Date)
 	createdAt: Date;

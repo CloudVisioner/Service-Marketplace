@@ -170,11 +170,11 @@ export class QuoteService {
 			{ quoteStatus: QuoteStatus.REJECTED },
 		);
 
-		// Update service request status to IN_PROGRESS (automatic transition when quote is accepted)
+		// Update service request status to ACTIVE (automatic transition when quote is accepted)
 		const updatedServiceRequest = await this.serviceRequestModel
 			.findByIdAndUpdate(
 				quote.quoteServiceReqId,
-				{ reqStatus: ServiceRequestStatus.IN_PROGRESS },
+				{ reqStatus: ServiceRequestStatus.ACTIVE },
 				{ new: true },
 			)
 			.exec();

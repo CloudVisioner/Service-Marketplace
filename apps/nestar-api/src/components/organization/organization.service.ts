@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, InternalServerErrorException } from '@
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Organization, Organizations } from '../../libs/dto/organization/organization';
-import { BuyerOrganizationInput, OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderSortInput } from '../../libs/dto/organization/organization.input';
+import { BuyerOrganizationInput, OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderOrganizationInput, ProviderSortInput, UpdateProviderOrganizationInput } from '../../libs/dto/organization/organization.input';
 import { OrganizationUpdate } from '../../libs/dto/organization/organization.update';
 import { Message } from '../../libs/enums/common.enum';
 import { T } from '../../libs/types/common';
@@ -46,8 +46,13 @@ export class OrganizationService {
 		if (!org.organizationWebsiteUrl && org.orgWebsiteUrl) {
 			org.organizationWebsiteUrl = org.orgWebsiteUrl;
 		}
+		// Map orgLogoImages (array) to organizationImage (string) - take first image if array exists
 		if (!org.organizationImage && org.orgLogoImages) {
-			org.organizationImage = org.orgLogoImages;
+			if (Array.isArray(org.orgLogoImages) && org.orgLogoImages.length > 0) {
+				org.organizationImage = org.orgLogoImages[0]; // Take first image as string
+			} else if (typeof org.orgLogoImages === 'string') {
+				org.organizationImage = org.orgLogoImages; // Already a string
+			}
 		}
 		if (!org.organizationTeamSize && org.orgTeamSize !== undefined) {
 			org.organizationTeamSize = org.orgTeamSize;
@@ -67,7 +72,7 @@ export class OrganizationService {
 
 		// --- Non-nullable array fields (GraphQL schema: [String]!) ---
 		// These MUST always be an array; GraphQL will error on null.
-		const requiredArrayFields = ['orgSkills', 'organizationImage'];
+		const requiredArrayFields = ['orgSkills']; // organizationImage is now a string, not an array
 		for (const field of requiredArrayFields) {
 			if (!Array.isArray(org[field])) {
 				org[field] = typeof org[field] === 'string' ? [org[field]] : [];
@@ -93,6 +98,27 @@ export class OrganizationService {
 		// Map organizationEmail to organizationContactEmail for frontend compatibility
 		if (org.organizationEmail !== undefined) {
 			org.organizationContactEmail = org.organizationEmail;
+		}
+
+		// Map orgType to organizationType for frontend compatibility
+		if (org.orgType !== undefined && org.orgType !== null) {
+			org.organizationType = org.orgType;
+		} else if (org.organizationType === undefined) {
+			// If neither orgType nor organizationType exists, set to null (GraphQL field is nullable)
+			org.organizationType = null;
+		}
+
+		// Map orgStatus to organizationStatus for frontend compatibility
+		if (org.orgStatus !== undefined && org.orgStatus !== null) {
+			org.organizationStatus = org.orgStatus;
+		} else if (org.organizationStatus === undefined) {
+			// If neither orgStatus nor organizationStatus exists, set to null (GraphQL field is nullable)
+			org.organizationStatus = null;
+		}
+
+		// Map orgCountry to organizationCountry for frontend compatibility
+		if (org.orgCountry !== undefined) {
+			org.organizationCountry = org.orgCountry;
 		}
 
 		// Ensure required non-nullable fields have values (for old records)
@@ -345,11 +371,25 @@ export class OrganizationService {
 		}
 
 		// Remove orgId and orgOwnerUserId from input to prevent modification
-		const { orgId, orgOwnerUserId, organizationContactEmail, ...updateData } = input as any;
+		const { orgId, orgOwnerUserId, organizationContactEmail, organizationImage, ...updateData } = input as any;
 		
 		// Map organizationContactEmail to organizationEmail for database
 		if (organizationContactEmail !== undefined) {
 			updateData.organizationEmail = organizationContactEmail;
+		}
+
+		// Handle organizationImage: convert array to string if frontend sends array
+		if (organizationImage !== undefined) {
+			if (Array.isArray(organizationImage)) {
+				// Frontend sent array, take first element
+				updateData.organizationImage = organizationImage.length > 0 ? organizationImage[0] : null;
+			} else if (typeof organizationImage === 'string') {
+				// Frontend sent string (correct format)
+				updateData.organizationImage = organizationImage;
+			} else {
+				// Invalid type, set to null
+				updateData.organizationImage = null;
+			}
 		}
 
 		// If orgType is being updated, validate it matches user role
@@ -756,6 +796,7 @@ export class OrganizationService {
 			if (cleanInput.organizationLocation !== undefined) updateData.organizationLocation = cleanInput.organizationLocation;
 			if (cleanInput.organizationDescription !== undefined) updateData.organizationDescription = cleanInput.organizationDescription;
 			if (cleanInput.budgetRange !== undefined) updateData.budgetRange = cleanInput.budgetRange;
+			if (cleanInput.organizationImage !== undefined) updateData.organizationImage = cleanInput.organizationImage || null; // Save organizationImage as string
 
 			// Check for unique name conflict (if changing name)
 			if (cleanInput.organizationName && cleanInput.organizationName !== existingOrg.organizationName) {
@@ -808,6 +849,7 @@ export class OrganizationService {
 				organizationLocation: cleanInput.organizationLocation,
 				organizationDescription: cleanInput.organizationDescription,
 				budgetRange: cleanInput.budgetRange || undefined,
+				organizationImage: cleanInput.organizationImage || null, // Save organizationImage as string
 				// createdAt and updatedAt will be added automatically by Mongoose timestamps
 			};
 
@@ -880,5 +922,280 @@ export class OrganizationService {
 		}
 
 		return this.normalizeOrganizationFields(result[0]);
+	}
+
+	/**
+	 * Get provider organization for the logged-in provider.
+	 * Returns null if provider has no organization yet.
+	 */
+	public async getProviderOrganization(userId: ObjectId): Promise<Organization | null> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+
+		// Verify user exists and is a PROVIDER
+		const user = await this.userModel.findById(userIdObj).exec();
+		if (!user) {
+			throw new BadRequestException('User not found.');
+		}
+		if (user.userRole !== UserRole.PROVIDER) {
+			throw new BadRequestException('Only PROVIDER users can get provider organization.');
+		}
+
+		const result = await this.organizationModel
+			.aggregate([
+				{
+					$match: {
+						orgOwnerUserId: userIdObj,
+						orgType: 'SERVICE_PROVIDER',
+					},
+				},
+				{
+					$lookup: {
+						from: 'users',
+						localField: 'orgOwnerUserId',
+						foreignField: '_id',
+						as: 'orgOwnerData',
+					},
+				},
+				{
+					$unwind: { path: '$orgOwnerData', preserveNullAndEmptyArrays: true },
+				},
+			])
+			.exec();
+
+		if (!result.length) {
+			return null;
+		}
+
+		return this.normalizeOrganizationFields(result[0]);
+	}
+
+	// =========================================================================
+	// PROVIDER-SPECIFIC ORGANIZATION PROFILE APIs
+	// =========================================================================
+
+	/**
+	 * Create provider organization profile.
+	 * Auto-sets orgType=SERVICE_PROVIDER and orgStatus=ACTIVE.
+	 */
+	public async createProviderOrgProf(userId: ObjectId, input: ProviderOrganizationInput): Promise<Organization> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+
+		// Verify user exists and is a PROVIDER
+		const user = await this.userModel.findById(userIdObj).exec();
+		if (!user) {
+			throw new BadRequestException('User not found.');
+		}
+		if (user.userRole !== UserRole.PROVIDER) {
+			throw new BadRequestException('Only PROVIDER users can create provider organization profiles.');
+		}
+
+		// Check if user already has a provider organization
+		const existingOrg = await this.organizationModel
+			.findOne({
+				orgOwnerUserId: userIdObj,
+				orgType: 'SERVICE_PROVIDER',
+			})
+			.exec();
+
+		if (existingOrg) {
+			throw new BadRequestException('You already have a provider organization. Use updateProviderOrgProf to update it.');
+		}
+
+		// Check for duplicate organization name
+		const existingName = await this.organizationModel.findOne({ organizationName: input.organizationName }).exec();
+		if (existingName) {
+			throw new BadRequestException('Organization with this name already exists. Please choose a different name.');
+		}
+
+		try {
+			// Only save fields that come from frontend input + required system fields
+			// Explicitly set unnecessary fields to undefined so MongoDB doesn't save them with defaults
+			const orgData: any = {
+				orgType: 'SERVICE_PROVIDER',
+				orgStatus: OrganizationStatus.ACTIVE,
+				organizationName: input.organizationName,
+				organizationDescription: input.organizationDescription || null,
+				organizationEmail: input.organizationContactEmail || null, // Save to organizationEmail field in DB
+				orgCountry: input.organizationCountry || null, // DB field is orgCountry, but API uses organizationCountry
+				categoryId: input.organizationCategories || [],
+				subCategory: input.organizationSubCategories || [],
+				organizationImage: input.organizationImage || null, // Save organizationImage as string (not array)
+				orgOwnerUserId: userIdObj,
+				// Explicitly exclude unnecessary fields by setting to undefined
+				// MongoDB will NOT save undefined fields, preventing default values from being applied
+				orgTotalProjects: undefined,
+				orgResponseTimeAvg: undefined,
+				orgVerified: undefined,
+				orgSkills: undefined,
+				orgAverageRating: undefined,
+				orgTotalLikes: undefined,
+				orgTotalViews: undefined,
+				organizationHourlyRate: undefined,
+				organizationTeamSize: undefined,
+				organizationSpecialties: undefined,
+				organizationWebsiteUrl: undefined,
+				organizationPhoneNumber: undefined,
+				industries: undefined,
+				minProjectSize: undefined,
+				badges: undefined,
+				reviewsCount: undefined,
+				serviceTitle: undefined,
+				orgTaxId: undefined,
+				orgCity: undefined,
+			};
+
+			// Remove undefined fields before saving (clean object)
+			Object.keys(orgData).forEach(key => {
+				if (orgData[key] === undefined) {
+					delete orgData[key];
+				}
+			});
+
+			const result = await this.organizationModel.create(orgData);
+
+			// Explicitly unset unnecessary fields that MongoDB created with defaults
+			// These fields are not needed for provider organizations
+			await this.organizationModel.findByIdAndUpdate(
+				result._id,
+				{
+					$unset: {
+						orgTotalProjects: '',
+						orgResponseTimeAvg: '',
+						orgVerified: '',
+						orgSkills: '',
+						orgAverageRating: '',
+						orgTotalLikes: '',
+						orgTotalViews: '',
+						organizationHourlyRate: '',
+						organizationTeamSize: '',
+						organizationSpecialties: '',
+						organizationWebsiteUrl: '',
+						organizationPhoneNumber: '',
+						industries: '',
+						minProjectSize: '',
+						badges: '',
+						reviewsCount: '',
+						serviceTitle: '',
+						orgTaxId: '',
+						orgCity: '',
+					},
+				},
+				{ new: true }
+			).exec();
+
+			// Increment userOrgCount for the creator
+			await this.userModel.findByIdAndUpdate(
+				userIdObj,
+				{ $inc: { userOrgCount: 1 } },
+				{ new: true }
+			).exec();
+
+			// Update user's organization reference
+			await this.userModel.findByIdAndUpdate(
+				userIdObj,
+				{ userOrganizationId: result._id },
+				{ new: true }
+			).exec();
+
+			return this.normalizeOrganizationFields(result.toObject());
+		} catch (err) {
+			console.log('Error, OrganizationService.createProviderOrgProf:', err.message);
+			if (err instanceof BadRequestException) throw err;
+			throw new BadRequestException(Message.CREATE_FAILED);
+		}
+	}
+
+	/**
+	 * Update provider organization profile.
+	 * Only allows updating specific provider fields.
+	 */
+	public async updateProviderOrgProf(userId: ObjectId, input: UpdateProviderOrganizationInput): Promise<Organization> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+		const orgIdObj = shapeIntoMongoObjectId(input.organizationId);
+
+		// Verify user exists and is a PROVIDER
+		const user = await this.userModel.findById(userIdObj).exec();
+		if (!user) {
+			throw new BadRequestException('User not found.');
+		}
+		if (user.userRole !== UserRole.PROVIDER) {
+			throw new BadRequestException('Only PROVIDER users can update provider organization profiles.');
+		}
+
+		// Fetch the organization
+		const org = await this.organizationModel.findById(orgIdObj).exec();
+		if (!org) {
+			throw new BadRequestException('Organization not found.');
+		}
+
+		// Verify user owns this organization
+		const orgOwnerId = shapeIntoMongoObjectId(org.orgOwnerUserId);
+		if (!orgOwnerId.equals(userIdObj)) {
+			throw new BadRequestException('You can only update your own organization.');
+		}
+
+		// Verify it's a SERVICE_PROVIDER organization
+		if (org.orgType !== 'SERVICE_PROVIDER') {
+			throw new BadRequestException('This is not a provider organization.');
+		}
+
+		// Check for duplicate organization name (if name is being changed)
+		if (input.organizationName && input.organizationName !== org.organizationName) {
+			const existingName = await this.organizationModel
+				.findOne({
+					organizationName: input.organizationName,
+					_id: { $ne: orgIdObj },
+				})
+				.exec();
+			if (existingName) {
+				throw new BadRequestException('Organization with this name already exists. Please choose a different name.');
+			}
+		}
+
+		try {
+			// Build update object with only provided fields
+			const updateData: T = {};
+
+			if (input.organizationName !== undefined) {
+				updateData.organizationName = input.organizationName;
+			}
+			if (input.organizationDescription !== undefined) {
+				updateData.organizationDescription = input.organizationDescription;
+			}
+			if (input.organizationContactEmail !== undefined) {
+				updateData.organizationEmail = input.organizationContactEmail; // Save to organizationEmail field in DB
+			}
+			if (input.organizationCountry !== undefined) {
+				updateData.orgCountry = input.organizationCountry;
+			}
+			if (input.organizationCategories !== undefined) {
+				updateData.categoryId = input.organizationCategories;
+			}
+			if (input.organizationSubCategories !== undefined) {
+				updateData.subCategory = input.organizationSubCategories;
+			}
+			if (input.organizationImage !== undefined) {
+				updateData.organizationImage = input.organizationImage;
+			}
+
+			// If no fields to update, return the existing organization
+			if (Object.keys(updateData).length === 0) {
+				return this.normalizeOrganizationFields(org.toObject());
+			}
+
+			const updatedOrg = await this.organizationModel
+				.findByIdAndUpdate(orgIdObj, updateData, { new: true })
+				.exec();
+
+			if (!updatedOrg) {
+				throw new InternalServerErrorException(Message.UPDATE_FAILED);
+			}
+
+			return this.normalizeOrganizationFields(updatedOrg.toObject());
+		} catch (err) {
+			console.log('Error, OrganizationService.updateProviderOrgProf:', err.message);
+			if (err instanceof BadRequestException) throw err;
+			throw new BadRequestException(Message.UPDATE_FAILED);
+		}
 	}
 }

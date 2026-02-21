@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { BuyerServiceRequests, ServiceRequest, ServiceRequestMeta, ServiceRequests } from '../../libs/dto/service-request/service-request';
 import { BuyerServiceRequestFilterInput, ServiceRequestInput, ServiceRequestInquiry } from '../../libs/dto/service-request/service-request.input';
+import { ServiceRequestUpdate } from '../../libs/dto/service-request/service-request.update';
 import { ServiceRequestStatus, Urgency } from '../../libs/enums/service-request.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { T } from '../../libs/types/common';
@@ -60,7 +61,7 @@ export class ServiceRequestService {
 					reqCreatedByUserId: userIdObj,
 					reqBuyerOrgId: orgIdObj,
 					reqTitle: { $regex: new RegExp(`^${escapedTitle}$`, 'i') }, // Case-insensitive exact match
-					reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.IN_PROGRESS] }, // Only check active requests
+					reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.ACTIVE] }, // Only check active requests
 				})
 				.exec();
 
@@ -74,7 +75,7 @@ export class ServiceRequestService {
 			const otherUserServiceRequest = await this.serviceRequestModel
 				.findOne({
 					reqTitle: { $regex: new RegExp(`^${escapedTitle}$`, 'i') }, // Case-insensitive exact match
-					reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.IN_PROGRESS] }, // Only check active requests
+					reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.ACTIVE] }, // Only check active requests
 					reqCreatedByUserId: { $ne: userIdObj }, // Different user
 				})
 				.exec();
@@ -118,6 +119,130 @@ export class ServiceRequestService {
 			console.log('Error, ServiceRequestService.createServiceRequest:', err.message);
 			if (err instanceof BadRequestException) throw err;
 			throw new BadRequestException(Message.CREATE_FAILED);
+		}
+	}
+
+	/**
+	 * Update a service request.
+	 * Only allows editing when request status is DRAFT or OPEN.
+	 * Only the buyer who owns the request can edit it.
+	 */
+	public async updateServiceRequest(userId: ObjectId, input: ServiceRequestUpdate): Promise<ServiceRequest> {
+		try {
+			const requestIdObj = shapeIntoMongoObjectId(input._id);
+			const userIdObj = shapeIntoMongoObjectId(userId);
+
+			// Fetch the service request
+			const serviceRequest = await this.serviceRequestModel.findById(requestIdObj).exec();
+			if (!serviceRequest) {
+				throw new BadRequestException('Service request not found.');
+			}
+
+			// Verify user is a BUYER
+			const user = await this.userModel.findById(userIdObj).exec();
+			if (!user) {
+				throw new BadRequestException('User not found.');
+			}
+			if (user.userRole !== 'BUYER') {
+				throw new BadRequestException('Only BUYER users can update service requests.');
+			}
+
+			// Verify user owns the organization that owns this service request
+			const buyerOrgId = shapeIntoMongoObjectId(serviceRequest.reqBuyerOrgId);
+			const org = await this.organizationModel.findById(buyerOrgId).exec();
+			if (!org) {
+				throw new BadRequestException('Organization not found.');
+			}
+
+			const orgOwnerId = shapeIntoMongoObjectId(org.orgOwnerUserId);
+			if (!orgOwnerId.equals(userIdObj)) {
+				throw new BadRequestException('You can only update service requests from your own organization.');
+			}
+
+			// CRITICAL: Only allow editing when status is DRAFT or OPEN
+			const currentStatus = serviceRequest.reqStatus;
+			const editableStatuses = [ServiceRequestStatus.DRAFT, ServiceRequestStatus.OPEN];
+			if (!editableStatuses.includes(currentStatus)) {
+				throw new BadRequestException(
+					`Cannot edit service request. Editing is only allowed when status is DRAFT or OPEN. Current status: ${currentStatus}`,
+				);
+			}
+
+			// Build update object with only provided fields
+			const updateData: T = {};
+
+			if (input.reqTitle !== undefined) {
+				// Check for duplicate title if title is being changed
+				if (input.reqTitle !== serviceRequest.reqTitle) {
+					const escapedTitle = input.reqTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+					const existingRequest = await this.serviceRequestModel
+						.findOne({
+							reqTitle: { $regex: new RegExp(`^${escapedTitle}$`, 'i') },
+							reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.ACTIVE] },
+							_id: { $ne: requestIdObj }, // Exclude current request
+						})
+						.exec();
+
+					if (existingRequest) {
+						throw new BadRequestException(
+							`A service request with the title "${input.reqTitle}" already exists and is currently active. Please choose a different title.`,
+						);
+					}
+				}
+				updateData.reqTitle = input.reqTitle;
+			}
+
+			if (input.reqDescription !== undefined) {
+				updateData.reqDescription = input.reqDescription;
+			}
+
+			if (input.reqCategory !== undefined) {
+				updateData.reqCategory = input.reqCategory;
+			}
+
+			if (input.reqSubCategory !== undefined) {
+				updateData.reqSubCategory = input.reqSubCategory;
+			}
+
+			if (input.reqBudgetRange !== undefined) {
+				updateData.reqBudgetRange = input.reqBudgetRange;
+			}
+
+			if (input.reqDeadline !== undefined) {
+				updateData.reqDeadline = input.reqDeadline;
+			}
+
+			if (input.reqUrgency !== undefined) {
+				updateData.reqUrgency = input.reqUrgency;
+			}
+
+			if (input.reqSkillsNeeded !== undefined) {
+				updateData.reqSkillsNeeded = input.reqSkillsNeeded;
+			}
+
+			if (input.reqAttachments !== undefined) {
+				updateData.reqAttachments = input.reqAttachments;
+			}
+
+			// If no fields to update, return the existing request
+			if (Object.keys(updateData).length === 0) {
+				return serviceRequest;
+			}
+
+			// Update the service request
+			const updatedRequest = await this.serviceRequestModel
+				.findByIdAndUpdate(requestIdObj, updateData, { new: true })
+				.exec();
+
+			if (!updatedRequest) {
+				throw new InternalServerErrorException(Message.UPDATE_FAILED);
+			}
+
+			return updatedRequest;
+		} catch (err) {
+			console.log('Error, ServiceRequestService.updateServiceRequest:', err.message);
+			if (err instanceof BadRequestException) throw err;
+			throw new BadRequestException(Message.UPDATE_FAILED);
 		}
 	}
 
@@ -181,7 +306,70 @@ export class ServiceRequestService {
 			return { list: [], metaCounter: [{ total: 0 }] };
 		}
 
-		return result[0];
+		// Normalize fields and handle null values for old records
+		const normalizedResult = result[0];
+		if (normalizedResult.list) {
+			normalizedResult.list = normalizedResult.list.map((req: any) => {
+				// Ensure reqBudgetRange can be null (GraphQL field is now nullable)
+				// Old records may not have this field, so allow null
+				if (req.reqBudgetRange === undefined) {
+					req.reqBudgetRange = null; // Explicitly set to null for GraphQL
+				}
+				// Ensure reqUrgency can be null (GraphQL field is now nullable)
+				if (req.reqUrgency === undefined) {
+					req.reqUrgency = null; // Explicitly set to null for GraphQL
+				}
+				// Ensure numeric fields can be null (GraphQL fields are now nullable)
+				if (req.reqNewQuotesCount === undefined) {
+					req.reqNewQuotesCount = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqTotalLikes === undefined) {
+					req.reqTotalLikes = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqTotalViews === undefined) {
+					req.reqTotalViews = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqTotalQuotes === undefined) {
+					req.reqTotalQuotes = null; // Explicitly set to null for GraphQL
+				}
+				// Ensure array fields can be null (GraphQL fields are now nullable)
+				if (req.reqSkillsNeeded === undefined) {
+					req.reqSkillsNeeded = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqAttachments === undefined) {
+					req.reqAttachments = null; // Explicitly set to null for GraphQL
+				}
+				// Ensure core fields can be null (GraphQL fields are now nullable for old records)
+				if (req.reqTitle === undefined) {
+					req.reqTitle = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqDescription === undefined) {
+					req.reqDescription = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqCategory === undefined) {
+					req.reqCategory = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqBuyerOrgId === undefined) {
+					req.reqBuyerOrgId = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqStatus === undefined) {
+					req.reqStatus = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqDeadline === undefined) {
+					req.reqDeadline = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqCreatedByUserId === undefined) {
+					req.reqCreatedByUserId = null; // Explicitly set to null for GraphQL
+				}
+				// Normalize organization data if present
+				if (req.reqBuyerOrgData) {
+					req.reqBuyerOrgData = this.normalizeOrganizationData(req.reqBuyerOrgData);
+				}
+				return req;
+			});
+		}
+
+		return normalizedResult;
 	}
 
 	public async getServiceRequest(userId: ObjectId | null, requestId: ObjectId): Promise<ServiceRequest> {
@@ -252,7 +440,66 @@ export class ServiceRequestService {
 			throw new InternalServerErrorException(Message.NO_DATA_FOUND);
 		}
 
-		return result[0];
+		// Normalize fields and handle null values for old records
+		const serviceRequest = result[0];
+		// Ensure reqBudgetRange can be null (GraphQL field is now nullable)
+		// Old records may not have this field, so allow null
+		if (serviceRequest.reqBudgetRange === undefined) {
+			serviceRequest.reqBudgetRange = null; // Explicitly set to null for GraphQL
+		}
+		// Ensure reqUrgency can be null (GraphQL field is now nullable)
+		// Old records may not have this field, so allow null
+		if (serviceRequest.reqUrgency === undefined) {
+			serviceRequest.reqUrgency = null; // Explicitly set to null for GraphQL
+		}
+		// Ensure numeric fields can be null (GraphQL fields are now nullable)
+		if (serviceRequest.reqNewQuotesCount === undefined) {
+			serviceRequest.reqNewQuotesCount = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqTotalLikes === undefined) {
+			serviceRequest.reqTotalLikes = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqTotalViews === undefined) {
+			serviceRequest.reqTotalViews = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqTotalQuotes === undefined) {
+			serviceRequest.reqTotalQuotes = null; // Explicitly set to null for GraphQL
+		}
+		// Ensure array fields can be null (GraphQL fields are now nullable)
+		if (serviceRequest.reqSkillsNeeded === undefined) {
+			serviceRequest.reqSkillsNeeded = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqAttachments === undefined) {
+			serviceRequest.reqAttachments = null; // Explicitly set to null for GraphQL
+		}
+		// Ensure core fields can be null (GraphQL fields are now nullable for old records)
+		if (serviceRequest.reqTitle === undefined) {
+			serviceRequest.reqTitle = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqDescription === undefined) {
+			serviceRequest.reqDescription = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqCategory === undefined) {
+			serviceRequest.reqCategory = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqBuyerOrgId === undefined) {
+			serviceRequest.reqBuyerOrgId = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqStatus === undefined) {
+			serviceRequest.reqStatus = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqDeadline === undefined) {
+			serviceRequest.reqDeadline = null; // Explicitly set to null for GraphQL
+		}
+		if (serviceRequest.reqCreatedByUserId === undefined) {
+			serviceRequest.reqCreatedByUserId = null; // Explicitly set to null for GraphQL
+		}
+		// Normalize organization data if present
+		if (serviceRequest.reqBuyerOrgData) {
+			serviceRequest.reqBuyerOrgData = this.normalizeOrganizationData(serviceRequest.reqBuyerOrgData);
+		}
+
+		return serviceRequest;
 	}
 
 	public async getAllServiceRequests(input: ServiceRequestInquiry): Promise<ServiceRequests> {
@@ -317,7 +564,70 @@ export class ServiceRequestService {
 			return { list: [], metaCounter: [{ total: 0 }] };
 		}
 
-		return result[0];
+		// Normalize fields and handle null values for old records
+		const normalizedResult = result[0];
+		if (normalizedResult.list) {
+			normalizedResult.list = normalizedResult.list.map((req: any) => {
+				// Ensure reqBudgetRange can be null (GraphQL field is now nullable)
+				// Old records may not have this field, so allow null
+				if (req.reqBudgetRange === undefined) {
+					req.reqBudgetRange = null; // Explicitly set to null for GraphQL
+				}
+				// Ensure reqUrgency can be null (GraphQL field is now nullable)
+				if (req.reqUrgency === undefined) {
+					req.reqUrgency = null; // Explicitly set to null for GraphQL
+				}
+				// Ensure numeric fields can be null (GraphQL fields are now nullable)
+				if (req.reqNewQuotesCount === undefined) {
+					req.reqNewQuotesCount = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqTotalLikes === undefined) {
+					req.reqTotalLikes = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqTotalViews === undefined) {
+					req.reqTotalViews = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqTotalQuotes === undefined) {
+					req.reqTotalQuotes = null; // Explicitly set to null for GraphQL
+				}
+				// Ensure array fields can be null (GraphQL fields are now nullable)
+				if (req.reqSkillsNeeded === undefined) {
+					req.reqSkillsNeeded = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqAttachments === undefined) {
+					req.reqAttachments = null; // Explicitly set to null for GraphQL
+				}
+				// Ensure core fields can be null (GraphQL fields are now nullable for old records)
+				if (req.reqTitle === undefined) {
+					req.reqTitle = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqDescription === undefined) {
+					req.reqDescription = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqCategory === undefined) {
+					req.reqCategory = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqBuyerOrgId === undefined) {
+					req.reqBuyerOrgId = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqStatus === undefined) {
+					req.reqStatus = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqDeadline === undefined) {
+					req.reqDeadline = null; // Explicitly set to null for GraphQL
+				}
+				if (req.reqCreatedByUserId === undefined) {
+					req.reqCreatedByUserId = null; // Explicitly set to null for GraphQL
+				}
+				// Normalize organization data if present
+				if (req.reqBuyerOrgData) {
+					req.reqBuyerOrgData = this.normalizeOrganizationData(req.reqBuyerOrgData);
+				}
+				return req;
+			});
+		}
+
+		return normalizedResult;
 	}
 
 	public async updateServiceRequestStatus(
@@ -355,10 +665,11 @@ export class ServiceRequestService {
 
 			// Enforce lifecycle transitions for BUYER
 			// Valid transitions:
-			// OPEN → IN_PROGRESS (handled automatically when quote is accepted)
-			// IN_PROGRESS → CLOSED (buyer marks work as done)
+			// OPEN → ACTIVE (handled automatically when quote is accepted)
+			// ACTIVE → COMPLETED (work delivered)
+			// COMPLETED → CLOSED (buyer marks as done/paid)
 			// OPEN → CANCELLED (buyer cancels before accepting quote)
-			// IN_PROGRESS → CANCELLED (buyer cancels during work)
+			// ACTIVE → CANCELLED (buyer cancels during work)
 
 			if (currentStatus === status) {
 				throw new BadRequestException(`Service request is already ${status}.`);
@@ -375,10 +686,10 @@ export class ServiceRequestService {
 
 			// Only allow specific transitions
 			const allowedTransitions: Record<ServiceRequestStatus, ServiceRequestStatus[]> = {
-				[ServiceRequestStatus.DRAFT]: [ServiceRequestStatus.PUBLISHED, ServiceRequestStatus.OPEN, ServiceRequestStatus.CANCELLED],
-				[ServiceRequestStatus.PUBLISHED]: [ServiceRequestStatus.OPEN, ServiceRequestStatus.CANCELLED],
+				[ServiceRequestStatus.DRAFT]: [ServiceRequestStatus.OPEN, ServiceRequestStatus.CANCELLED],
 				[ServiceRequestStatus.OPEN]: [ServiceRequestStatus.CANCELLED],
-				[ServiceRequestStatus.IN_PROGRESS]: [ServiceRequestStatus.CLOSED, ServiceRequestStatus.CANCELLED],
+				[ServiceRequestStatus.ACTIVE]: [ServiceRequestStatus.COMPLETED, ServiceRequestStatus.CANCELLED],
+				[ServiceRequestStatus.COMPLETED]: [ServiceRequestStatus.CLOSED],
 				[ServiceRequestStatus.CLOSED]: [], // No transitions allowed for buyer
 				[ServiceRequestStatus.CANCELLED]: [], // No transitions allowed
 			};
@@ -498,9 +809,66 @@ export class ServiceRequestService {
 				.exec(),
 		]);
 
-		// Parse list
+		// Parse list and normalize fields
 		const list = listResult.length ? listResult[0].list : [];
 		const totalFiltered = listResult.length && listResult[0].total.length ? listResult[0].total[0].count : 0;
+
+		// Normalize fields and handle null values for old records
+		const normalizedList = list.map((req: any) => {
+			// Ensure reqBudgetRange can be null (GraphQL field is now nullable)
+			// Old records may not have this field, so allow null
+			if (req.reqBudgetRange === undefined) {
+				req.reqBudgetRange = null; // Explicitly set to null for GraphQL
+			}
+			// Ensure reqUrgency can be null (GraphQL field is now nullable)
+			// Old records may not have this field, so allow null
+			if (req.reqUrgency === undefined) {
+				req.reqUrgency = null; // Explicitly set to null for GraphQL
+			}
+			// Ensure numeric fields can be null (GraphQL fields are now nullable)
+			if (req.reqNewQuotesCount === undefined) {
+				req.reqNewQuotesCount = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqTotalLikes === undefined) {
+				req.reqTotalLikes = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqTotalViews === undefined) {
+				req.reqTotalViews = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqTotalQuotes === undefined) {
+				req.reqTotalQuotes = null; // Explicitly set to null for GraphQL
+			}
+			// Ensure array fields can be null (GraphQL fields are now nullable)
+			if (req.reqSkillsNeeded === undefined) {
+				req.reqSkillsNeeded = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqAttachments === undefined) {
+				req.reqAttachments = null; // Explicitly set to null for GraphQL
+			}
+			// Ensure core fields can be null (GraphQL fields are now nullable for old records)
+			if (req.reqTitle === undefined) {
+				req.reqTitle = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqDescription === undefined) {
+				req.reqDescription = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqCategory === undefined) {
+				req.reqCategory = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqBuyerOrgId === undefined) {
+				req.reqBuyerOrgId = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqStatus === undefined) {
+				req.reqStatus = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqDeadline === undefined) {
+				req.reqDeadline = null; // Explicitly set to null for GraphQL
+			}
+			if (req.reqCreatedByUserId === undefined) {
+				req.reqCreatedByUserId = null; // Explicitly set to null for GraphQL
+			}
+			return req;
+		});
 
 		// Parse per-status counts
 		const statusCounts: Record<string, number> = {};
@@ -510,13 +878,13 @@ export class ServiceRequestService {
 
 		const metaCounter: ServiceRequestMeta = {
 			total: Object.values(statusCounts).reduce((a: number, b: number) => a + b, 0),
-			open: (statusCounts[ServiceRequestStatus.OPEN] || 0) + (statusCounts[ServiceRequestStatus.PUBLISHED] || 0),
-			inProgress: statusCounts[ServiceRequestStatus.IN_PROGRESS] || 0,
-			closed: statusCounts[ServiceRequestStatus.CLOSED] || 0,
+			open: statusCounts[ServiceRequestStatus.OPEN] || 0,
+			inProgress: statusCounts[ServiceRequestStatus.ACTIVE] || 0,
+			closed: (statusCounts[ServiceRequestStatus.CLOSED] || 0) + (statusCounts[ServiceRequestStatus.COMPLETED] || 0),
 			draft: statusCounts[ServiceRequestStatus.DRAFT] || 0,
 		};
 
-		return { list, metaCounter };
+		return { list: normalizedList, metaCounter };
 	}
 
 	/**
@@ -532,11 +900,11 @@ export class ServiceRequestService {
 	}> {
 		const userIdObj = shapeIntoMongoObjectId(userId);
 
-		// Count active service requests (OPEN, PUBLISHED, IN_PROGRESS)
+		// Count active service requests (OPEN, ACTIVE)
 		const activeRequests = await this.serviceRequestModel
 			.countDocuments({
 				reqCreatedByUserId: userIdObj,
-				reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.PUBLISHED, ServiceRequestStatus.IN_PROGRESS] },
+				reqStatus: { $in: [ServiceRequestStatus.OPEN, ServiceRequestStatus.ACTIVE] },
 			})
 			.exec();
 
@@ -557,11 +925,11 @@ export class ServiceRequestService {
 		const totalQuotes = quotesAgg.length ? quotesAgg[0].totalQuotes : 0;
 		const newQuotes = quotesAgg.length ? quotesAgg[0].newQuotes : 0;
 
-		// Count active orders (IN_PROGRESS requests where a quote was accepted)
+		// Count active orders (ACTIVE requests where a quote was accepted)
 		const activeOrders = await this.serviceRequestModel
 			.countDocuments({
 				reqCreatedByUserId: userIdObj,
-				reqStatus: ServiceRequestStatus.IN_PROGRESS,
+				reqStatus: ServiceRequestStatus.ACTIVE,
 			})
 			.exec();
 
@@ -575,5 +943,47 @@ export class ServiceRequestService {
 			activeOrders,
 			unreadNotifications,
 		};
+	}
+
+	/**
+	 * Normalizes organization data to handle old field names and null values
+	 */
+	private normalizeOrganizationData(org: any): any {
+		if (!org) return org;
+
+		// Map orgType to organizationType
+		if (org.orgType !== undefined && org.orgType !== null) {
+			org.organizationType = org.orgType;
+		} else if (org.organizationType === undefined) {
+			org.organizationType = null; // GraphQL field is nullable
+		}
+
+		// Map orgStatus to organizationStatus
+		if (org.orgStatus !== undefined && org.orgStatus !== null) {
+			org.organizationStatus = org.orgStatus;
+		} else if (org.organizationStatus === undefined) {
+			org.organizationStatus = null; // GraphQL field is nullable
+		}
+
+		// Map orgCountry to organizationCountry
+		if (org.orgCountry !== undefined) {
+			org.organizationCountry = org.orgCountry;
+		}
+
+		// Map organizationEmail to organizationContactEmail
+		if (org.organizationEmail !== undefined) {
+			org.organizationContactEmail = org.organizationEmail;
+		}
+
+		// Map orgLogoImages (array) to organizationImage (string)
+		if (!org.organizationImage && org.orgLogoImages) {
+			if (Array.isArray(org.orgLogoImages) && org.orgLogoImages.length > 0) {
+				org.organizationImage = org.orgLogoImages[0];
+			} else if (typeof org.orgLogoImages === 'string') {
+				org.organizationImage = org.orgLogoImages;
+			}
+		}
+
+		return org;
 	}
 }
