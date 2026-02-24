@@ -134,7 +134,7 @@ export const CREATE_PROVIDER_ORG_PROF = gql`
       organizationName
       organizationDescription
       organizationContactEmail
-      orgCountry
+      organizationCountry
       categoryId
       subCategory
       orgOwnerUserId
@@ -159,7 +159,7 @@ export const UPDATE_PROVIDER_ORG_PROF = gql`
       organizationName
       organizationDescription
       organizationContactEmail
-      orgCountry
+      organizationCountry
       categoryId
       subCategory
       orgOwnerUserId

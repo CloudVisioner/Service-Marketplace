@@ -40,12 +40,12 @@ const UserSchema = new Schema(
 			required: true,
 		},
 
-	userNick: {
-		type: String,
-		required: true,
-		unique: true,
-		index: true,
-	},
+		userNick: {
+			type: String,
+			required: true,
+			unique: true,
+			index: true,
+		},
 
 		userImage: {
 			type: String,
@@ -75,13 +75,13 @@ const UserSchema = new Schema(
 			required: true,
 		},
 
-	userTotalQuotes: {
-		type: Number,
-		default: 0,
-		required: true,
-	},
+		userTotalQuotes: {
+			type: Number,
+			default: 0,
+			required: true,
+		},
 
-	userOrgCount: {
+		userOrgCount: {
 			type: Number,
 			default: 0,
 			required: true,

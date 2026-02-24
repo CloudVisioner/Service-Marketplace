@@ -36,10 +36,10 @@ const ServiceRequestSchema = new Schema(
 			required: false,
 		},
 
-	reqBudgetRange: {
-		type: String,
-		required: true,
-	},
+		reqBudgetRange: {
+			type: String,
+			required: true,
+		},
 
 		reqDeadline: {
 			type: Date,

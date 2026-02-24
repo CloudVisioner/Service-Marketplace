@@ -18,10 +18,10 @@ export class Organization {
 	organizationStatus?: OrganizationStatus; // Maps from orgStatus in DB - Can be null for old records
 
 	@Field(() => String, { nullable: true })
-	organizationCountry?: string; // Maps from orgCountry in DB
-
+	organizationCountry?: string;
+	
 	@Field(() => String, { nullable: true })
-	orgCity?: string;
+	orgCountry?: string;
 
 	@Field(() => String, { nullable: true })
 	organizationWebsiteUrl?: string;
