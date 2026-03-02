@@ -3,6 +3,7 @@ import { UseGuards } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { Quote } from '../../libs/dto/quote/quote';
 import { QuoteInput } from '../../libs/dto/quote/quote.input';
+import { QuoteUpdate } from '../../libs/dto/quote/quote.update';
 import { AcceptQuoteInput } from '../../libs/dto/quote/accept-quote.input';
 import { AcceptQuoteResponse } from '../../libs/dto/quote/accept-quote-response';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -82,6 +83,42 @@ export class QuoteResolver {
 		console.log('Query: getQuotesByOrganization');
 		const orgIdObj = shapeIntoMongoObjectId(orgId);
 		return await this.quoteService.getQuotesByOrganization(orgIdObj, userId, userRole);
+	}
+
+	@Roles(UserRole.PROVIDER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Mutation(() => Quote)
+	public async updateQuote(
+		@Args('input') input: QuoteUpdate,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<Quote> {
+		console.log('Mutation: updateQuote');
+		const quoteIdObj = shapeIntoMongoObjectId(input.quoteId);
+		return await this.quoteService.updateQuote(quoteIdObj, userId, input);
+	}
+
+	@Roles(UserRole.PROVIDER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Mutation(() => Quote)
+	public async deleteQuote(
+		@Args('quoteId') quoteId: string,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<Quote> {
+		console.log('Mutation: deleteQuote');
+		const quoteIdObj = shapeIntoMongoObjectId(quoteId);
+		return await this.quoteService.deleteQuote(quoteIdObj, userId);
+	}
+
+	@Roles(UserRole.BUYER)
+	@UseGuards(AuthGuard, RolesGuard)
+	@Query(() => [Quote])
+	public async getProvidersQuote(
+		@Args('requestId') requestId: string,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<Quote[]> {
+		console.log('Query: getProvidersQuote');
+		const requestIdObj = shapeIntoMongoObjectId(requestId);
+		return await this.quoteService.getProvidersQuote(requestIdObj, userId);
 	}
 
 }

@@ -295,4 +295,8 @@ export class UpdateProviderOrganizationInput {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	organizationImage?: string; // Single image URL (string, not array)
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	budgetRange?: string;
 }

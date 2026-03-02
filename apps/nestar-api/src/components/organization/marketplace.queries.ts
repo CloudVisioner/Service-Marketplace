@@ -26,8 +26,6 @@ export const GET_PROVIDERS_BY_CATEGORY = gql`
       list {
         _id
         organizationName
-        organizationEmail
-        orgCountry
         organizationDescription
         organizationImage
         categoryId
@@ -54,12 +52,47 @@ export const GET_PROVIDER_DETAIL = gql`
     getProviderDetail(orgId: $orgId) {
       _id
       organizationName
-      organizationEmail
-      orgCountry
       organizationDescription
+      organizationCountry
+      orgCity
       organizationImage
+      organizationWebsiteUrl
+      organizationHourlyRate
+      organizationTeamSize
+      organizationSpecialties
       categoryId
       subCategory
+      orgAverageRating
+      orgTotalProjects
+      orgTotalLikes
+      orgTotalViews
+      orgResponseTimeAvg
+      orgVerified
+      orgSkills
+      establishmentYear
+      minProjectSize
+      budgetRange
+      bio
+      avatar
+      badges
+      color
+      organizationLocation
+      flag
+      reviewsCount
+      organizationContactEmail
+      organizationPhoneNumber
+      linkedIn
+      twitter
+      github
+      orgOwnerData {
+        _id
+        userNick
+        userEmail
+        userPhone
+        userDescription
+        userRole
+        userStatus
+      }
       createdAt
       updatedAt
     }
@@ -78,12 +111,47 @@ export const GET_PROVIDERS_SORTED = gql`
       list {
         _id
         organizationName
-        organizationEmail
-        orgCountry
         organizationDescription
+        organizationCountry
+        orgCity
         organizationImage
+        organizationWebsiteUrl
+        organizationHourlyRate
+        organizationTeamSize
+        organizationSpecialties
         categoryId
         subCategory
+        orgAverageRating
+        orgTotalProjects
+        orgTotalLikes
+        orgTotalViews
+        orgResponseTimeAvg
+        orgVerified
+        orgSkills
+        establishmentYear
+        minProjectSize
+        budgetRange
+        bio
+        avatar
+        badges
+        color
+        organizationLocation
+        flag
+        reviewsCount
+        organizationContactEmail
+        organizationPhoneNumber
+        linkedIn
+        twitter
+        github
+        orgOwnerData {
+          _id
+          userNick
+          userEmail
+          userPhone
+          userDescription
+          userRole
+          userStatus
+        }
         createdAt
         updatedAt
       }

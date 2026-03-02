@@ -16,7 +16,7 @@ import { UserRole } from '../../libs/enums/user.enum';
 @Injectable()
 export class OrganizationService {
 	constructor(
-		@InjectModel('Organization') private organizationModel: Model<any>,
+		@InjectModel('Organization') private organizationModel: Model<Organization>,
 		@InjectModel('User') private userModel: Model<any>,
 		private likeService: LikeService,
 	) {}
@@ -45,12 +45,6 @@ export class OrganizationService {
 		}
 		if (!org.organizationWebsiteUrl && org.orgWebsiteUrl) {
 			org.organizationWebsiteUrl = org.orgWebsiteUrl;
-		}
-		if (!org.organizationCountry && org.orgCountry) {
-			org.organizationCountry = org.orgCountry;
-		}
-		if (!org.orgCountry && org.organizationCountry) {
-			org.orgCountry = org.organizationCountry;
 		}
 		// Map orgLogoImages (array) to organizationImage (string) - take first image if array exists
 		if (!org.organizationImage && org.orgLogoImages) {
@@ -464,7 +458,7 @@ export class OrganizationService {
 		const userIdObj = shapeIntoMongoObjectId(userId);
 
 		// First check if organization exists and is active
-		const orgCheck: any = await this.organizationModel
+		const orgCheck = await this.organizationModel
 			.findOne({ _id: orgIdObj, orgStatus: OrganizationStatus.ACTIVE })
 			.lean()
 			.exec();
@@ -533,6 +527,7 @@ export class OrganizationService {
 		if (input.location) {
 			match.$or = [
 				{ orgCountry: { $regex: input.location, $options: 'i' } },
+				{ orgCity: { $regex: input.location, $options: 'i' } },
 				{ organizationLocation: { $regex: input.location, $options: 'i' } },
 			];
 		}
@@ -547,35 +542,30 @@ export class OrganizationService {
 			}
 		}
 
-		const result = await this.organizationModel
-			.aggregate([
-				{ $match: match },
-				{
-					$facet: {
-						list: [
-							{ $sort: { orgAverageRating: -1, orgTotalProjects: -1 } },
-							{ $skip: skip },
-							{ $limit: limit },
-							{
-								$project: {
-									_id: 1,
-									organizationName: 1,
-									organizationEmail: 1,
-									orgCountry: 1,
-									organizationDescription: 1,
-									categoryId: 1,
-									subCategory: 1,
-									organizationImage: 1,
-									createdAt: 1,
-									deletedAt: 1,
-								},
+		const result = await this.organizationModel.aggregate([
+			{ $match: match },
+			{
+				$facet: {
+					list: [
+						{ $sort: { orgAverageRating: -1, orgTotalProjects: -1 } },
+						{ $skip: skip },
+						{ $limit: limit },
+						{
+							$lookup: {
+								from: 'users',
+								localField: 'orgOwnerUserId',
+								foreignField: '_id',
+								as: 'orgOwnerData',
 							},
-						],
-						metaCounter: [{ $count: 'total' }],
-					},
+						},
+						{
+							$unwind: { path: '$orgOwnerData', preserveNullAndEmptyArrays: true },
+						},
+					],
+					metaCounter: [{ $count: 'total' }],
 				},
-			])
-			.exec();
+			},
+		]).exec();
 
 		if (!result.length) {
 			return { list: [], metaCounter: [{ total: 0 }] };
@@ -1133,7 +1123,7 @@ export class OrganizationService {
 		}
 
 		// Fetch the organization
-		const org: any = await this.organizationModel.findById(orgIdObj).exec();
+		const org = await this.organizationModel.findById(orgIdObj).exec();
 		if (!org) {
 			throw new BadRequestException('Organization not found.');
 		}

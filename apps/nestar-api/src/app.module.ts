@@ -11,16 +11,15 @@ import { T } from './libs/types/common';
 import { SocketModule } from './socket/socket.module';
 
 @Module({
-	// INTEGRATION
 	imports: [
-		ConfigModule.forRoot(), // 
+		ConfigModule.forRoot(),
 		GraphQLModule.forRoot({
 			driver: ApolloDriver,
 			playground: true,
 			uploads: false, // for receiving images, multipart/form-data is ON.
 			autoSchemaFile: true,
 			csrfPrevention: false, // Required for multipart/form-data file uploads via graphql-upload
-			formatError: (error: T) => { // customizes, cleans graphQL errors for clients
+			formatError: (error: T) => {
 				const graphQLFormattedError = {
 					code: error?.extensions.code,
 					message:
@@ -34,10 +33,7 @@ import { SocketModule } from './socket/socket.module';
 		DatabaseModule,
 		SocketModule,
 	],
-	controllers: [AppController], // For REST API
-	providers: [AppService, AppResolver], // for testing
+	controllers: [AppController],
+	providers: [AppService, AppResolver],
 })
 export class AppModule {}
-
-// imports is the mechanism that connects (injects) the modules to AppModule
-// @Module provideas the properties to AppModule {}.

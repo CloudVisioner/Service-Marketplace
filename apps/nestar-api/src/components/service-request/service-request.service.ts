@@ -255,6 +255,14 @@ export class ServiceRequestService {
 			match.reqStatus = input.search.reqStatus;
 		}
 
+		if (input.search.reqCategory) {
+			match.reqCategory = input.search.reqCategory;
+		}
+
+		if (input.search.reqSubCategory) {
+			match.reqSubCategory = input.search.reqSubCategory;
+		}
+
 		if (input.search.text) {
 			match.$or = [
 				{ reqTitle: { $regex: input.search.text, $options: 'i' } },
@@ -511,6 +519,14 @@ export class ServiceRequestService {
 
 		if (input.search.reqBuyerOrgId) {
 			match.reqBuyerOrgId = shapeIntoMongoObjectId(input.search.reqBuyerOrgId);
+		}
+
+		if (input.search.reqCategory) {
+			match.reqCategory = input.search.reqCategory;
+		}
+
+		if (input.search.reqSubCategory) {
+			match.reqSubCategory = input.search.reqSubCategory;
 		}
 
 		if (input.search.text) {

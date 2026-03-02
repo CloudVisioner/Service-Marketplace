@@ -1,9 +1,7 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import mongoose from 'mongoose';
-import { NotificationType, NotificationStatus, NotificationGroup } from '../../enums/notification.enum';
+import { NotificationType } from '../../enums/notification.enum';
 import { User } from '../user/user';
-import { Organization } from '../organization/organization';
-import { ServiceRequest } from '../service-request/service-request';
 import { TotalCounter } from '../common/common';
 
 @ObjectType()
@@ -12,31 +10,22 @@ export class Notification {
 	_id: mongoose.ObjectId;
 
 	@Field(() => NotificationType)
-	notificationType: NotificationType;
-
-	@Field(() => NotificationStatus)
-	notificationStatus: NotificationStatus;
-
-	@Field(() => NotificationGroup)
-	notificationGroup: NotificationGroup;
+	type: NotificationType;
 
 	@Field(() => String)
-	notificationTitle: string;
+	message: string;
+
+	@Field(() => Boolean)
+	read: boolean;
 
 	@Field(() => String, { nullable: true })
-	notificationDesc?: string;
+	relatedQuoteId?: mongoose.ObjectId;
 
 	@Field(() => String)
 	senderUserId: mongoose.ObjectId;
 
 	@Field(() => String)
 	receiverUserId: mongoose.ObjectId;
-
-	@Field(() => String)
-	organizationId: mongoose.ObjectId;
-
-	@Field(() => String)
-	serviceRequestId: mongoose.ObjectId;
 
 	@Field(() => Date)
 	createdAt: Date;
@@ -50,12 +39,6 @@ export class Notification {
 
 	@Field(() => User, { nullable: true })
 	receiverUserData?: User;
-
-	@Field(() => Organization, { nullable: true })
-	organizationData?: Organization;
-
-	@Field(() => ServiceRequest, { nullable: true })
-	serviceRequestData?: ServiceRequest;
 }
 
 @ObjectType()

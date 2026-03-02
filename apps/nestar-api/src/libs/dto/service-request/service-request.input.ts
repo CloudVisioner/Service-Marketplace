@@ -67,6 +67,10 @@ export class ServiceRequestSearch {
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
+	reqSubCategory?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
 	text?: string;
 }
 

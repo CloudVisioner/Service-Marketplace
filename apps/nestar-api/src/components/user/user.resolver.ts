@@ -61,11 +61,28 @@ export class UserResolver {
 
 	@UseGuards(WithoutGuard)
 	@Query(() => User)
-	public async getUser(@Args('userId') input: string, @AuthUser('_id') userId: ObjectId): Promise<User> {
+	public async getUser(
+		@Args('userId', { nullable: true }) input: string | null,
+		@AuthUser('_id') userId: ObjectId | null,
+	): Promise<User> {
 		console.log('Query: getUser');
-		console.log('userId:', userId);
-		const targetId = shapeIntoMongoObjectId(input);
-		return await this.userService.getUser(userId, targetId);
+		console.log('input userId:', input);
+		console.log('authenticated userId:', userId);
+		
+		// If input is empty/null, use authenticated user's ID as fallback
+		let targetId: ObjectId;
+		if (input && input.trim() !== '') {
+			targetId = shapeIntoMongoObjectId(input, 'userId');
+		} else if (userId) {
+			// Fallback to authenticated user's ID from JWT token
+			targetId = userId;
+		} else {
+			throw new BadRequestException('User ID is required. Please provide a valid userId or ensure you are authenticated.');
+		}
+		
+		// Use authenticated user's ID for authorization check, or targetId if not authenticated
+		const authUserId = userId || targetId;
+		return await this.userService.getUser(authUserId, targetId);
 	}
 
 	// Removed: likeTargetUser mutation - Users cannot be liked, only SERVICE_PROVIDER organizations can be liked

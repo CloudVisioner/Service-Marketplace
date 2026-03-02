@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { Notification, Notifications } from '../../libs/dto/notification/notification';
 import { NotificationInput, NotificationInquiry } from '../../libs/dto/notification/notification.input';
-import { NotificationStatus } from '../../libs/enums/notification.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { T } from '../../libs/types/common';
 import { shapeIntoMongoObjectId } from '../../libs/config';
@@ -20,7 +19,7 @@ export class NotificationService {
 		try {
 			const notificationData = {
 				...input,
-				notificationStatus: NotificationStatus.WAIT,
+				read: false,
 			};
 
 			const result = await this.notificationModel.create(notificationData);
@@ -29,9 +28,9 @@ export class NotificationService {
 			try {
 				this.socketGateway.emitNotification(input.receiverUserId.toString(), {
 					_id: result._id,
-					notificationType: result.notificationType,
-					notificationTitle: result.notificationTitle,
-					notificationDesc: result.notificationDesc,
+					type: result.type,
+					message: result.message,
+					read: result.read,
 					createdAt: result.createdAt,
 				});
 			} catch (err) {
@@ -50,12 +49,12 @@ export class NotificationService {
 			receiverUserId: userId,
 		};
 
-		if (input.search.notificationStatus) {
-			match.notificationStatus = input.search.notificationStatus;
+		if (input.search.read !== undefined) {
+			match.read = input.search.read;
 		}
 
-		if (input.search.notificationType) {
-			match.notificationType = input.search.notificationType;
+		if (input.search.type) {
+			match.type = input.search.type;
 		}
 
 		const sort: T = { createdAt: -1 };
@@ -91,28 +90,6 @@ export class NotificationService {
 							{
 								$unwind: { path: '$receiverUserData', preserveNullAndEmptyArrays: true },
 							},
-							{
-								$lookup: {
-									from: 'organizations',
-									localField: 'organizationId',
-									foreignField: '_id',
-									as: 'organizationData',
-								},
-							},
-							{
-								$unwind: { path: '$organizationData', preserveNullAndEmptyArrays: true },
-							},
-							{
-								$lookup: {
-									from: 'serviceRequests',
-									localField: 'serviceRequestId',
-									foreignField: '_id',
-									as: 'serviceRequestData',
-								},
-							},
-							{
-								$unwind: { path: '$serviceRequestData', preserveNullAndEmptyArrays: true },
-							},
 						],
 						metaCounter: [{ $count: 'total' }],
 					},
@@ -143,14 +120,14 @@ export class NotificationService {
 		}
 
 		// Check if already read
-		if (notification.notificationStatus === NotificationStatus.READ) {
+		if (notification.read === true) {
 			throw new BadRequestException('This notification is already marked as read.');
 		}
 
 		const result = await this.notificationModel
 			.findByIdAndUpdate(
 				notificationIdObj,
-				{ notificationStatus: NotificationStatus.READ },
+				{ read: true },
 				{ new: true },
 			)
 			.exec();
@@ -167,9 +144,9 @@ export class NotificationService {
 			.updateMany(
 				{
 					receiverUserId: userId,
-					notificationStatus: NotificationStatus.WAIT,
+					read: false,
 				},
-				{ notificationStatus: NotificationStatus.READ },
+				{ read: true },
 			)
 			.exec();
 
@@ -179,13 +156,13 @@ export class NotificationService {
 	public async getUnreadCount(userId: ObjectId, input?: NotificationInquiry): Promise<number> {
 		const match: T = {
 			receiverUserId: userId,
-			notificationStatus: NotificationStatus.WAIT,
+			read: false,
 		};
 
 		// Apply search filters if provided
 		if (input?.search) {
-			if (input.search.notificationType) {
-				match.notificationType = input.search.notificationType;
+			if (input.search.type) {
+				match.type = input.search.type;
 			}
 		}
 

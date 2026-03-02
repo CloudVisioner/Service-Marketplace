@@ -8,7 +8,6 @@ import { ServiceRequestStatus } from '../../libs/enums/service-request.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { NotificationService } from '../notification/notification.service';
-import { NotificationType, NotificationGroup } from '../../libs/enums/notification.enum';
 
 @Injectable()
 export class OrderService {
@@ -78,22 +77,7 @@ export class OrderService {
 			)
 			.exec();
 
-		// Get quote for notification
-		const quote = await this.quoteModel.findById(order.orderQuoteId).exec();
-
-		// Create notification for provider
-		if (quote) {
-			await this.notificationService.createNotification({
-				notificationType: NotificationType.ORDER_CANCELLED,
-				notificationGroup: NotificationGroup.ORDER,
-				notificationTitle: 'Order Cancelled',
-				notificationDesc: `The order for service request: ${serviceRequest.reqTitle} has been cancelled by the buyer.`,
-				senderUserId: buyerId,
-				receiverUserId: quote.quoteCreatedByUserId,
-				organizationId: order.orderProviderOrgId,
-				serviceRequestId: order.orderServiceReqId,
-			});
-		}
+		// Note: ORDER_CANCELLED notification removed for MVP - only QUOTE_SENT and QUOTE_ACCEPTED
 
 		return cancelledOrder;
 	}

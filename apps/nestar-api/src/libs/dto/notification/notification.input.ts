@@ -1,25 +1,21 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 import { IsNotEmpty, IsOptional, Min } from 'class-validator';
-import { NotificationType, NotificationStatus, NotificationGroup } from '../../enums/notification.enum';
+import { NotificationType } from '../../enums/notification.enum';
 import { ObjectId } from 'mongoose';
 
 @InputType()
 export class NotificationInput {
 	@IsNotEmpty()
 	@Field(() => NotificationType)
-	notificationType: NotificationType;
-
-	@IsNotEmpty()
-	@Field(() => NotificationGroup)
-	notificationGroup: NotificationGroup;
+	type: NotificationType;
 
 	@IsNotEmpty()
 	@Field(() => String)
-	notificationTitle: string;
+	message: string;
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	notificationDesc?: string;
+	relatedQuoteId?: ObjectId;
 
 	@IsNotEmpty()
 	@Field(() => String)
@@ -28,25 +24,17 @@ export class NotificationInput {
 	@IsNotEmpty()
 	@Field(() => String)
 	receiverUserId: ObjectId;
-
-	@IsNotEmpty()
-	@Field(() => String)
-	organizationId: ObjectId;
-
-	@IsNotEmpty()
-	@Field(() => String)
-	serviceRequestId: ObjectId;
 }
 
 @InputType()
 class NotificationSearch {
 	@IsOptional()
-	@Field(() => NotificationStatus, { nullable: true })
-	notificationStatus?: NotificationStatus;
+	@Field(() => Boolean, { nullable: true })
+	read?: boolean;
 
 	@IsOptional()
 	@Field(() => NotificationType, { nullable: true })
-	notificationType?: NotificationType;
+	type?: NotificationType;
 }
 
 @InputType()

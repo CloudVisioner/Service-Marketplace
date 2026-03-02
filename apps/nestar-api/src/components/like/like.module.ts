@@ -17,7 +17,7 @@ import OrganizationSchema from '../../schemas/Organization.model';
 			},
 		]),
 	],
-    providers: [LikeService], // resolver bohsqa resolverlar uchun hizmatga keladi
-    exports: [LikeService],
+	providers: [LikeService],
+	exports: [LikeService],
 })
 export class LikeModule {}

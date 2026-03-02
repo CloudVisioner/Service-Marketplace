@@ -9,7 +9,7 @@ import { OrderStatus } from '../../libs/enums/order.enum';
 import { Message } from '../../libs/enums/common.enum';
 import { shapeIntoMongoObjectId } from '../../libs/config';
 import { NotificationService } from '../notification/notification.service';
-import { NotificationType, NotificationGroup } from '../../libs/enums/notification.enum';
+import { NotificationType } from '../../libs/enums/notification.enum';
 import { Order } from '../../libs/dto/order/order';
 import { AcceptQuoteResponse } from '../../libs/dto/quote/accept-quote-response';
 import { ServiceRequest } from '../../libs/dto/service-request/service-request';
@@ -97,16 +97,13 @@ export class QuoteService {
 				$inc: { reqTotalQuotes: 1 },
 			});
 
-			// Create notification for buyer
+			// Create notification for buyer - QUOTE_SENT
 			await this.notificationService.createNotification({
-				notificationType: NotificationType.NEW_QUOTE,
-				notificationGroup: NotificationGroup.QUOTE,
-				notificationTitle: 'New Quote Received',
-				notificationDesc: `A new quote has been submitted for your service request: ${serviceRequest.reqTitle}`,
+				type: NotificationType.QUOTE_SENT,
+				message: `A new quote has been submitted for your service request: ${serviceRequest.reqTitle}`,
+				relatedQuoteId: result._id,
 				senderUserId: userId,
 				receiverUserId: serviceRequest.reqCreatedByUserId,
-				organizationId: orgId,
-				serviceRequestId: input.quoteServiceReqId,
 			});
 
 			return result;
@@ -194,16 +191,13 @@ export class QuoteService {
 			orderAmount: quote.quoteAmount,
 		});
 
-		// Create notification for provider - work can start
+		// Create notification for provider - QUOTE_ACCEPTED
 		await this.notificationService.createNotification({
-			notificationType: NotificationType.QUOTE_ACCEPTED,
-			notificationGroup: NotificationGroup.ORDER,
-			notificationTitle: 'Quote Accepted',
-			notificationDesc: `Your quote was accepted! Order #${newOrder._id.toString().slice(-6)}`,
+			type: NotificationType.QUOTE_ACCEPTED,
+			message: `Your quote was accepted! Order #${newOrder._id.toString().slice(-6)}`,
+			relatedQuoteId: quoteIdObj,
 			senderUserId: buyerId,
 			receiverUserId: quote.quoteCreatedByUserId,
-			organizationId: quote.quoteProviderOrgId,
-			serviceRequestId: quote.quoteServiceReqId,
 		});
 
 		return {
@@ -255,17 +249,7 @@ export class QuoteService {
 			throw new InternalServerErrorException(Message.UPDATE_FAILED);
 		}
 
-		// Create notification for provider
-		await this.notificationService.createNotification({
-			notificationType: NotificationType.QUOTE_REJECTED,
-			notificationGroup: NotificationGroup.QUOTE,
-			notificationTitle: 'Quote Rejected',
-			notificationDesc: `Your quote has been rejected for service request: ${serviceRequest.reqTitle}`,
-			senderUserId: buyerId,
-			receiverUserId: quote.quoteCreatedByUserId,
-			organizationId: quote.quoteProviderOrgId,
-			serviceRequestId: quote.quoteServiceReqId,
-		});
+		// Note: QUOTE_REJECTED notification removed for MVP - only QUOTE_SENT and QUOTE_ACCEPTED
 
 		return result;
 	}
@@ -337,6 +321,134 @@ export class QuoteService {
 				},
 				{
 					$unwind: { path: '$quoteServiceReqData', preserveNullAndEmptyArrays: true },
+				},
+				{ $sort: { createdAt: -1 } },
+			])
+			.exec();
+
+		return result;
+	}
+
+	public async updateQuote(quoteId: ObjectId, userId: ObjectId, input: any): Promise<Quote> {
+		const quoteIdObj = shapeIntoMongoObjectId(quoteId);
+
+		// Get quote
+		const quote = await this.quoteModel.findById(quoteIdObj).exec();
+		if (!quote) {
+			throw new BadRequestException('Quote not found.');
+		}
+
+		// Verify user is the creator of the quote
+		if (quote.quoteCreatedByUserId.toString() !== userId.toString()) {
+			throw new BadRequestException('You can only update quotes you created.');
+		}
+
+		// Only allow updating PENDING quotes
+		if (quote.quoteStatus !== QuoteStatus.PENDING) {
+			throw new BadRequestException(`Cannot update quote. Quote status is ${quote.quoteStatus}. Only PENDING quotes can be updated.`);
+		}
+
+		// Build update object with only provided fields
+		const updateData: any = {};
+		if (input.quoteMessage !== undefined) {
+			updateData.quoteMessage = input.quoteMessage;
+		}
+		if (input.quoteAmount !== undefined) {
+			updateData.quoteAmount = input.quoteAmount;
+		}
+		if (input.quoteValidUntil !== undefined) {
+			updateData.quoteValidUntil = input.quoteValidUntil;
+		}
+
+		// Check if there's anything to update
+		if (Object.keys(updateData).length === 0) {
+			throw new BadRequestException('No fields provided to update.');
+		}
+
+		const result = await this.quoteModel
+			.findByIdAndUpdate(quoteIdObj, updateData, { new: true })
+			.exec();
+
+		if (!result) {
+			throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		}
+
+		return result;
+	}
+
+	public async deleteQuote(quoteId: ObjectId, userId: ObjectId): Promise<Quote> {
+		const quoteIdObj = shapeIntoMongoObjectId(quoteId);
+
+		// Get quote
+		const quote = await this.quoteModel.findById(quoteIdObj).exec();
+		if (!quote) {
+			throw new BadRequestException('Quote not found.');
+		}
+
+		// Verify user is the creator of the quote
+		if (quote.quoteCreatedByUserId.toString() !== userId.toString()) {
+			throw new BadRequestException('You can only delete quotes you created.');
+		}
+
+		// Only allow deleting PENDING quotes
+		if (quote.quoteStatus !== QuoteStatus.PENDING) {
+			throw new BadRequestException(`Cannot delete quote. Quote status is ${quote.quoteStatus}. Only PENDING quotes can be deleted.`);
+		}
+
+		// Delete the quote
+		const result = await this.quoteModel.findByIdAndDelete(quoteIdObj).exec();
+
+		if (!result) {
+			throw new InternalServerErrorException(Message.REMOVE_FAILED);
+		}
+
+		// Update service request quote count
+		await this.serviceRequestModel.findByIdAndUpdate(quote.quoteServiceReqId, {
+			$inc: { reqTotalQuotes: -1 },
+		});
+
+		return result;
+	}
+
+	public async getProvidersQuote(requestId: ObjectId, buyerId: ObjectId): Promise<Quote[]> {
+		const requestIdObj = shapeIntoMongoObjectId(requestId);
+
+		// Verify service request exists
+		const serviceRequest = await this.serviceRequestModel.findById(requestIdObj).exec();
+		if (!serviceRequest) {
+			throw new BadRequestException('Service request not found.');
+		}
+
+		// Verify buyer owns the service request
+		if (serviceRequest.reqCreatedByUserId.toString() !== buyerId.toString()) {
+			throw new BadRequestException('You can only view quotes for your own service requests.');
+		}
+
+		// Get all quotes for this service request with provider and user data
+		const result = await this.quoteModel
+			.aggregate([
+				{ $match: { quoteServiceReqId: requestIdObj } },
+				{
+					$lookup: {
+						from: 'organizations',
+						localField: 'quoteProviderOrgId',
+						foreignField: '_id',
+						as: 'quoteProviderOrgData',
+					},
+				},
+				{
+					$unwind: { path: '$quoteProviderOrgData', preserveNullAndEmptyArrays: true },
+				},
+				{
+					$lookup: {
+						from: 'users',
+						localField: 'quoteCreatedByUserId',
+						foreignField: '_id',
+						as: 'quoteCreatedByUserData',
+					},
+				},
+				{
+					$unwind: { path: '$quoteCreatedByUserData', preserveNullAndEmptyArrays: true },
 				},
 				{ $sort: { createdAt: -1 } },
 			])
