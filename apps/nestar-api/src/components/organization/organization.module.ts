@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import OrganizationSchema from '../../schemas/Organization.model';
 import UserSchema from '../../schemas/User.model';
+import RatingSchema from '../../schemas/Rating.model';
 import { OrganizationService } from './organization.service';
 import { OrganizationResolver } from './organization.resolver';
 import { AuthModule } from '../auth/auth.module';
@@ -17,6 +18,10 @@ import { LikeModule } from '../like/like.module';
 			{
 				name: 'User',
 				schema: UserSchema,
+			},
+			{
+				name: 'Rating',
+				schema: RatingSchema,
 			},
 		]),
 		AuthModule,

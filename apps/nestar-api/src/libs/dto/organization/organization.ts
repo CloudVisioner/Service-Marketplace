@@ -21,6 +21,9 @@ export class Organization {
 	organizationCountry?: string; // Maps from orgCountry in DB
 
 	@Field(() => String, { nullable: true })
+	orgCountry?: string; // Alias for organizationCountry (for backward compatibility)
+
+	@Field(() => String, { nullable: true })
 	orgCity?: string;
 
 	@Field(() => String, { nullable: true })
@@ -50,14 +53,17 @@ export class Organization {
 	@Field(() => String, { nullable: true })
 	organizationIndustry?: string;
 
-	@Field(() => Int)
-	orgAverageRating: number;
+	@Field(() => Number, { nullable: true })
+	orgAverageRating?: number; // Calculated: totalRatingValue / reviewCount
 
-	@Field(() => Int)
-	orgTotalLikes: number;
+	@Field(() => Int, { nullable: true })
+	totalRatingValue?: number; // Sum of all ratings
 
-	@Field(() => Int)
-	orgTotalViews: number;
+	@Field(() => Int, { nullable: true })
+	orgTotalLikes?: number;
+
+	@Field(() => Int, { nullable: true })
+	orgTotalViews?: number;
 
 	@Field(() => String, { nullable: true })
 	organizationImage?: string; // Single image URL (string, not array)
@@ -150,6 +156,9 @@ export class Organization {
 
 	@Field(() => [MeLiked], { nullable: true })
 	meLiked?: MeLiked[];
+
+	@Field(() => Int, { nullable: true })
+	myRating?: number; // Current user's rating (1-5) or null if not rated
 }
 
 @ObjectType()

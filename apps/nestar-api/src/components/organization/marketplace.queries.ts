@@ -28,8 +28,15 @@ export const GET_PROVIDERS_BY_CATEGORY = gql`
         organizationName
         organizationDescription
         organizationImage
+        organizationCountry
+        orgCountry
+        orgCity
         categoryId
         subCategory
+        orgAverageRating
+        reviewsCount
+        budgetRange
+        organizationHourlyRate
         createdAt
         updatedAt
       }
@@ -79,6 +86,7 @@ export const GET_PROVIDER_DETAIL = gql`
       organizationLocation
       flag
       reviewsCount
+      myRating
       organizationContactEmail
       organizationPhoneNumber
       linkedIn

@@ -160,11 +160,61 @@ export const UPDATE_PROVIDER_ORG_PROF = gql`
       organizationDescription
       organizationContactEmail
       organizationCountry
+      orgCountry
       categoryId
       subCategory
+      organizationImage
+      budgetRange
       orgOwnerUserId
       createdAt
       updatedAt
+    }
+  }
+`;
+
+// ============================================================================
+// GET PROVIDER ORGANIZATION (Authenticated - Provider Only)
+// ============================================================================
+// Query: getProviderOrganization
+// Input: None (uses authenticated user from token)
+// Returns: Provider's own organization profile
+export const GET_PROVIDER_ORGANIZATION = gql`
+  query GetProviderOrganization {
+    getProviderOrganization {
+      _id
+      orgType
+      orgStatus
+      organizationName
+      organizationDescription
+      organizationContactEmail
+      organizationCountry
+      orgCountry
+      categoryId
+      subCategory
+      organizationImage
+      budgetRange
+      orgAverageRating
+      reviewsCount
+      orgOwnerUserId
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+// ============================================================================
+// RATE ORGANIZATION
+// ============================================================================
+// Mutation: rateOrganization
+// Input: RateOrganizationInput (orgId, rating)
+// Returns: Updated organization with new averageRating and reviewCount
+export const RATE_ORGANIZATION = gql`
+  mutation RateOrganization($input: RateOrganizationInput!) {
+    rateOrganization(input: $input) {
+      _id
+      orgAverageRating
+      reviewsCount
+      totalRatingValue
     }
   }
 `;

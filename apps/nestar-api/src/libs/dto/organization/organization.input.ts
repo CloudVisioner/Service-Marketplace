@@ -1,5 +1,5 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, MaxLength, Min } from 'class-validator';
+import { IsNotEmpty, IsOptional, MaxLength, Min, Max } from 'class-validator';
 import { OrganizationType, OrganizationStatus } from '../../enums/organization.enum';
 import { Category, SubCategory } from '../../enums/category.enum';
 
@@ -256,6 +256,10 @@ export class ProviderOrganizationInput {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	organizationImage?: string; // Single image URL (string, not array)
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	budgetRange?: string;
 }
 
 /**
@@ -299,4 +303,20 @@ export class UpdateProviderOrganizationInput {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	budgetRange?: string;
+}
+
+/**
+ * Input for rating an organization.
+ */
+@InputType()
+export class RateOrganizationInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	orgId: string;
+
+	@IsNotEmpty()
+	@Min(1)
+	@Max(5)
+	@Field(() => Int)
+	rating: number; // Rating from 1 to 5
 }

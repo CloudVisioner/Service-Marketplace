@@ -2,7 +2,7 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards, BadRequestException } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { Organization, Organizations } from '../../libs/dto/organization/organization';
-import { BuyerOrganizationInput, OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderOrganizationInput, ProviderSortInput, UpdateProviderOrganizationInput } from '../../libs/dto/organization/organization.input';
+import { BuyerOrganizationInput, OrganizationInput, OrganizationInquiry, ProviderCategoryInput, ProviderOrganizationInput, ProviderSortInput, UpdateProviderOrganizationInput, RateOrganizationInput } from '../../libs/dto/organization/organization.input';
 import { OrganizationUpdate } from '../../libs/dto/organization/organization.update';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -200,5 +200,19 @@ export class OrganizationResolver {
 	): Promise<Organization> {
 		console.log('Mutation: updateProviderOrgProf');
 		return await this.organizationService.updateProviderOrgProf(userId, input);
+	}
+
+	/**
+	 * Rate an organization.
+	 * Updates totalRatingValue, reviewCount, and recalculates averageRating.
+	 */
+	@UseGuards(AuthGuard)
+	@Mutation(() => Organization)
+	public async rateOrganization(
+		@Args('input') input: RateOrganizationInput,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<Organization> {
+		console.log('Mutation: rateOrganization');
+		return await this.organizationService.rateOrganization(userId, input.orgId, input.rating);
 	}
 }

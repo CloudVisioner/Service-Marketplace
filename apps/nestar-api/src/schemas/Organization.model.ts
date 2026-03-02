@@ -79,6 +79,12 @@ const OrganizationSchema = new Schema(
 			required: true,
 		},
 
+		totalRatingValue: {
+			type: Number,
+			default: 0,
+			required: true,
+		},
+
 		orgTotalLikes: {
 			type: Number,
 			default: 0,

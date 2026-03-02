@@ -18,6 +18,7 @@ export class OrganizationService {
 	constructor(
 		@InjectModel('Organization') private organizationModel: Model<Organization>,
 		@InjectModel('User') private userModel: Model<any>,
+		@InjectModel('Rating') private ratingModel: Model<any>,
 		private likeService: LikeService,
 	) {}
 
@@ -120,10 +121,57 @@ export class OrganizationService {
 		if (org.orgCountry !== undefined) {
 			org.organizationCountry = org.orgCountry;
 		}
+		// Also set orgCountry alias for backward compatibility
+		if (org.organizationCountry !== undefined && org.orgCountry === undefined) {
+			org.orgCountry = org.organizationCountry;
+		}
 
 		// Ensure required non-nullable fields have values (for old records)
 		if (!org.organizationName) {
 			org.organizationName = org.orgName || '';
+		}
+
+		// Ensure non-nullable numeric fields have default values (prevent null errors)
+		if (org.orgTotalProjects === undefined || org.orgTotalProjects === null) {
+			org.orgTotalProjects = 0;
+		} else {
+			org.orgTotalProjects = typeof org.orgTotalProjects === 'number' ? org.orgTotalProjects : 0;
+		}
+
+		if (org.orgResponseTimeAvg === undefined || org.orgResponseTimeAvg === null) {
+			org.orgResponseTimeAvg = 0;
+		} else {
+			org.orgResponseTimeAvg = typeof org.orgResponseTimeAvg === 'number' ? org.orgResponseTimeAvg : 0;
+		}
+
+		if (org.orgVerified === undefined || org.orgVerified === null) {
+			org.orgVerified = false;
+		}
+
+		// Handle nullable rating/likes/views fields - ensure they're numbers or null
+		if (org.orgAverageRating === undefined || org.orgAverageRating === null) {
+			org.orgAverageRating = null;
+		} else {
+			org.orgAverageRating = typeof org.orgAverageRating === 'number' ? org.orgAverageRating : 0;
+		}
+
+		// Handle totalRatingValue
+		if (org.totalRatingValue === undefined || org.totalRatingValue === null) {
+			org.totalRatingValue = 0;
+		} else {
+			org.totalRatingValue = typeof org.totalRatingValue === 'number' ? org.totalRatingValue : 0;
+		}
+
+		if (org.orgTotalLikes === undefined || org.orgTotalLikes === null) {
+			org.orgTotalLikes = null;
+		} else {
+			org.orgTotalLikes = typeof org.orgTotalLikes === 'number' ? org.orgTotalLikes : 0;
+		}
+
+		if (org.orgTotalViews === undefined || org.orgTotalViews === null) {
+			org.orgTotalViews = null;
+		} else {
+			org.orgTotalViews = typeof org.orgTotalViews === 'number' ? org.orgTotalViews : 0;
 		}
 
 		return org;
@@ -611,6 +659,14 @@ export class OrganizationService {
 		if (!userId) {
 			org.organizationEmail = null;
 			org.organizationPhoneNumber = null;
+			org.myRating = null;
+		} else {
+			// Get user's rating for this organization
+			const userRating = await this.ratingModel.findOne({
+				userId: shapeIntoMongoObjectId(userId),
+				orgId: orgIdObj,
+			}).exec();
+			org.myRating = userRating ? userRating.rating : null;
 		}
 
 		// Normalize subCategory to array
@@ -966,7 +1022,10 @@ export class OrganizationService {
 			return null;
 		}
 
-		return this.normalizeOrganizationFields(result[0]);
+		const org = result[0];
+		// Note: myRating is not needed here since provider is viewing their own org
+
+		return this.normalizeOrganizationFields(org);
 	}
 
 	// =========================================================================
@@ -1020,6 +1079,7 @@ export class OrganizationService {
 				categoryId: input.organizationCategories || [],
 				subCategory: input.organizationSubCategories || [],
 				organizationImage: input.organizationImage || null, // Save organizationImage as string (not array)
+				budgetRange: input.budgetRange || null, // Save budgetRange
 				orgOwnerUserId: userIdObj,
 				// Explicitly exclude unnecessary fields by setting to undefined
 				// MongoDB will NOT save undefined fields, preventing default values from being applied
@@ -1177,6 +1237,9 @@ export class OrganizationService {
 			if (input.organizationImage !== undefined) {
 				updateData.organizationImage = input.organizationImage;
 			}
+			if (input.budgetRange !== undefined) {
+				updateData.budgetRange = input.budgetRange;
+			}
 
 			// If no fields to update, return the existing organization
 			if (Object.keys(updateData).length === 0) {
@@ -1194,6 +1257,108 @@ export class OrganizationService {
 			return this.normalizeOrganizationFields(updatedOrg.toObject());
 		} catch (err) {
 			console.log('Error, OrganizationService.updateProviderOrgProf:', err.message);
+			if (err instanceof BadRequestException) throw err;
+			throw new BadRequestException(Message.UPDATE_FAILED);
+		}
+	}
+
+	/**
+	 * Rate an organization (toggle-based).
+	 * - If user hasn't rated: Add new rating
+	 * - If user rated with same value: Remove rating (toggle off)
+	 * - If user rated with different value: Update rating
+	 * Updates totalRatingValue, reviewCount, and recalculates averageRating.
+	 */
+	public async rateOrganization(userId: ObjectId, orgId: string, rating: number): Promise<Organization> {
+		const userIdObj = shapeIntoMongoObjectId(userId);
+		const orgIdObj = shapeIntoMongoObjectId(orgId);
+
+		// Validate rating is between 1 and 5
+		if (rating < 1 || rating > 5) {
+			throw new BadRequestException('Rating must be between 1 and 5.');
+		}
+
+		// Find the organization
+		const org = await this.organizationModel.findById(orgIdObj).exec();
+		if (!org) {
+			throw new BadRequestException('Organization not found.');
+		}
+
+		try {
+			// Check if user already rated this organization
+			const existingRating = await this.ratingModel.findOne({
+				userId: userIdObj,
+				orgId: orgIdObj,
+			}).exec();
+
+			// Get current organization values
+			const currentTotalRatingValue = org.totalRatingValue || 0;
+			const currentReviewCount = org.reviewsCount || 0;
+
+			let newTotalRatingValue: number;
+			let newReviewCount: number;
+			let newAverageRating: number;
+
+			if (existingRating) {
+				// User already rated
+				if (existingRating.rating === rating) {
+					// Same rating = toggle off (remove rating)
+					newTotalRatingValue = currentTotalRatingValue - existingRating.rating;
+					newReviewCount = currentReviewCount - 1;
+					
+					// Delete the rating
+					await this.ratingModel.findByIdAndDelete(existingRating._id).exec();
+				} else {
+					// Different rating = update rating
+					newTotalRatingValue = currentTotalRatingValue - existingRating.rating + rating;
+					newReviewCount = currentReviewCount; // Count stays the same
+					
+					// Update the rating
+					existingRating.rating = rating;
+					await existingRating.save();
+				}
+			} else {
+				// User hasn't rated yet = add new rating
+				newTotalRatingValue = currentTotalRatingValue + rating;
+				newReviewCount = currentReviewCount + 1;
+				
+				// Create new rating
+				await this.ratingModel.create({
+					userId: userIdObj,
+					orgId: orgIdObj,
+					rating: rating,
+				});
+			}
+
+			// Calculate average (avoid division by zero)
+			if (newReviewCount > 0) {
+				newAverageRating = Math.round((newTotalRatingValue / newReviewCount) * 10) / 10;
+			} else {
+				newAverageRating = 0;
+			}
+
+			// Update the organization
+			const updatedOrg = await this.organizationModel
+				.findByIdAndUpdate(
+					orgIdObj,
+					{
+						$set: {
+							totalRatingValue: newTotalRatingValue,
+							reviewsCount: newReviewCount,
+							orgAverageRating: newAverageRating,
+						},
+					},
+					{ new: true }
+				)
+				.exec();
+
+			if (!updatedOrg) {
+				throw new InternalServerErrorException(Message.UPDATE_FAILED);
+			}
+
+			return this.normalizeOrganizationFields(updatedOrg.toObject());
+		} catch (err) {
+			console.log('Error, OrganizationService.rateOrganization:', err.message);
 			if (err instanceof BadRequestException) throw err;
 			throw new BadRequestException(Message.UPDATE_FAILED);
 		}
