@@ -49,4 +49,22 @@ export class NotificationResolver {
 		console.log('Query: getUnreadNotificationCount');
 		return await this.notificationService.getUnreadCount(userId, input);
 	}
+
+	@UseGuards(AuthGuard)
+	@Mutation(() => Notification)
+	public async deleteNotification(
+		@Args('notificationId') notificationId: string,
+		@AuthUser('_id') userId: ObjectId,
+	): Promise<Notification> {
+		console.log('Mutation: deleteNotification');
+		const notificationIdObj = shapeIntoMongoObjectId(notificationId);
+		return await this.notificationService.deleteNotification(notificationIdObj, userId);
+	}
+
+	@UseGuards(AuthGuard)
+	@Mutation(() => Number)
+	public async deleteAllNotifications(@AuthUser('_id') userId: ObjectId): Promise<number> {
+		console.log('Mutation: deleteAllNotifications');
+		return await this.notificationService.deleteAllNotifications(userId);
+	}
 }
