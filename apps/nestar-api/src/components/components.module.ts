@@ -9,6 +9,7 @@ import { QuoteModule } from './quote/quote.module';
 import { ServiceRequestModule } from './service-request/service-request.module';
 import { NotificationModule } from './notification/notification.module';
 import { OrderModule } from './order/order.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
 	imports: [
@@ -22,6 +23,7 @@ import { OrderModule } from './order/order.module';
 		ServiceRequestModule,
 		NotificationModule,
 		OrderModule,
+		AdminModule,
 	],
 	providers: [],
 })

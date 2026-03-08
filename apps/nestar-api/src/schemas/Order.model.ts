@@ -44,6 +44,11 @@ const OrderSchema = new Schema(
 			type: Number,
 			required: true,
 		},
+
+		adminNotes: {
+			type: String,
+			required: false,
+		},
 	},
 	{ timestamps: true, collection: 'orders' },
 );

@@ -67,4 +67,72 @@ export class AuthService {
         // Return the database user to ensure we have the latest data
         return dbUser.toObject();
     }
+
+    /**
+     * Admin login - verifies admin credentials
+     */
+    public async adminLogin(userEmail: string, password: string): Promise<User> {
+        const user = await this.userModel.findOne({ userEmail }).select('+userPassword').exec();
+
+        if (!user) {
+            throw new UnauthorizedException('Invalid email or password.');
+        }
+
+        // Check if user is an admin
+        const adminRoles = ['ADMIN', 'SUPER_ADMIN', 'CONTENT_ADMIN'];
+        if (!adminRoles.includes(user.userRole)) {
+            throw new UnauthorizedException('Admin access required.');
+        }
+
+        // Check if user is active
+        if (user.userStatus !== 'ACTIVE') {
+            throw new UnauthorizedException('Account is not active.');
+        }
+
+        // Verify password
+        const isPasswordValid = await this.comparePassword(password, user.userPassword);
+        if (!isPasswordValid) {
+            throw new UnauthorizedException('Invalid email or password.');
+        }
+
+        return user.toObject();
+    }
+
+    /**
+     * Admin signup - only allowed if no SUPER_ADMIN exists
+     */
+    public async adminSignup(userNick: string, userEmail: string, password: string): Promise<User> {
+        // Check if any SUPER_ADMIN exists
+        const existingSuperAdmin = await this.userModel.findOne({ userRole: 'SUPER_ADMIN' }).exec();
+        if (existingSuperAdmin) {
+            throw new UnauthorizedException('Super admin already exists. Please use login instead.');
+        }
+
+        // Check for duplicate email
+        const existingEmail = await this.userModel.findOne({ userEmail }).exec();
+        if (existingEmail) {
+            throw new UnauthorizedException('Email already registered.');
+        }
+
+        // Check for duplicate user nick
+        const existingNick = await this.userModel.findOne({ userNick }).exec();
+        if (existingNick) {
+            throw new UnauthorizedException('User nick already exists.');
+        }
+
+        // Hash password
+        const hashedPassword = await this.hashPassword(password);
+
+        // Create SUPER_ADMIN user
+        const newAdmin = await this.userModel.create({
+            userNick,
+            userEmail,
+            userPassword: hashedPassword,
+            userRole: 'SUPER_ADMIN',
+            userStatus: 'ACTIVE',
+            userAuthType: 'EMAIL',
+        });
+
+        return newAdmin.toObject();
+    }
 }

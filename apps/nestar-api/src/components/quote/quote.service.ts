@@ -457,4 +457,134 @@ export class QuoteService {
 		return result;
 	}
 
+	// ============================================================================
+	// ADMIN METHODS
+	// ============================================================================
+
+	/**
+	 * Admin: Get all quotes with pagination and filtering
+	 */
+	public async getAllQuotesForAdmin(input: any): Promise<any> {
+		const match: any = {};
+
+		if (input.search) {
+			if (input.search.quoteStatus) {
+				match.quoteStatus = input.search.quoteStatus;
+			}
+			if (input.search.providerOrgId) {
+				match.quoteProviderOrgId = shapeIntoMongoObjectId(input.search.providerOrgId);
+			}
+			if (input.search.serviceRequestId) {
+				match.quoteServiceReqId = shapeIntoMongoObjectId(input.search.serviceRequestId);
+			}
+			if (input.search.isFlagged !== undefined && input.search.isFlagged !== null) {
+				match.isFlagged = input.search.isFlagged;
+			}
+			if (input.search.amountMin || input.search.amountMax) {
+				match.quoteAmount = {};
+				if (input.search.amountMin) {
+					match.quoteAmount.$gte = input.search.amountMin;
+				}
+				if (input.search.amountMax) {
+					match.quoteAmount.$lte = input.search.amountMax;
+				}
+			}
+			if (input.search.createdAtFrom || input.search.createdAtTo) {
+				match.createdAt = {};
+				if (input.search.createdAtFrom) {
+					match.createdAt.$gte = new Date(input.search.createdAtFrom);
+				}
+				if (input.search.createdAtTo) {
+					match.createdAt.$lte = new Date(input.search.createdAtTo);
+				}
+			}
+		}
+
+		const result = await this.quoteModel
+			.aggregate([
+				{ $match: match },
+				{ $sort: { createdAt: -1 } },
+				{
+					$facet: {
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+							{
+								$lookup: {
+									from: 'organizations',
+									localField: 'quoteProviderOrgId',
+									foreignField: '_id',
+									as: 'quoteProviderOrgData',
+								},
+							},
+							{
+								$unwind: { path: '$quoteProviderOrgData', preserveNullAndEmptyArrays: true },
+							},
+						],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+
+		if (!result.length) {
+			return { list: [], metaCounter: [{ total: 0 }] };
+		}
+
+		return result[0];
+	}
+
+	/**
+	 * Admin: Get quote by ID
+	 */
+	public async getQuoteByIdForAdmin(quoteId: string): Promise<Quote> {
+		const quoteIdObj = shapeIntoMongoObjectId(quoteId);
+		const quote = await this.quoteModel.findById(quoteIdObj).exec();
+
+		if (!quote) {
+			throw new BadRequestException('Quote not found.');
+		}
+
+		return quote;
+	}
+
+	/**
+	 * Admin: Flag quote (creates dispute)
+	 */
+	public async flagQuoteForAdmin(quoteId: string, reason: string, adminId: ObjectId): Promise<Quote> {
+		const quoteIdObj = shapeIntoMongoObjectId(quoteId);
+		const quote = await this.quoteModel.findById(quoteIdObj).exec();
+
+		if (!quote) {
+			throw new BadRequestException('Quote not found.');
+		}
+
+		// Set isFlagged to true and store flag details
+		const result = await this.quoteModel.findByIdAndUpdate(
+			quoteIdObj,
+			{
+				isFlagged: true,
+				flaggedAt: new Date(),
+				flaggedBy: adminId,
+				flagReason: reason,
+			},
+			{ new: true },
+		).exec();
+
+		if (!result) {
+			throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Admin: Hard delete quote
+	 */
+	public async hardDeleteQuoteForAdmin(quoteId: string): Promise<boolean> {
+		const quoteIdObj = shapeIntoMongoObjectId(quoteId);
+		const result = await this.quoteModel.findByIdAndDelete(quoteIdObj).exec();
+		return !!result;
+	}
+
 }

@@ -216,7 +216,7 @@ export class NotificationService {
 
 		// Filter by type - if specific type requested, use it; otherwise filter valid types only
 		if (input?.search?.type && this.validNotificationTypes.includes(input.search.type)) {
-			match.type = input.search.type;
+				match.type = input.search.type;
 		} else {
 			// Filter out notifications with null or invalid type values
 			match.type = { $exists: true, $ne: null, $in: this.validNotificationTypes };

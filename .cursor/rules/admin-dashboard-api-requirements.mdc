@@ -1,0 +1,50 @@
+---
+description: Backend API requirements and specifications for SMEConnect Admin Dashboard features including user management, organization management, service requests, quotes, orders, articles, disputes, audit logs, and platform settings
+---
+
+# Admin Dashboard API Requirements
+
+This document outlines all APIs, DTOs, schemas, types, and roles required to support the Admin Dashboard functionality.
+
+## Key Principles
+- All admin operations require `@UseGuards(AuthGuard)` and role verification
+- SUPER_ADMIN has full access
+- ADMIN has full access except admin management
+- CONTENT_ADMIN only has articles management access
+- All mutations should create audit log entries
+- Use pagination for all list queries
+- Return proper GraphQL errors with appropriate codes
+
+## Implementation Structure
+
+### Core Components
+1. **Enums**: UserRole, UserStatus, OrganizationStatus, ServiceRequestStatus, QuoteStatus, OrderStatus, ArticleStatus, DisputeType, DisputeStatus, AuditAction, AuditTargetType
+2. **DTOs**: Input types for all queries/mutations, Response types for all operations
+3. **Services**: Business logic for each module (UserService, OrganizationService, etc.)
+4. **Resolvers**: GraphQL resolvers with proper guards and role checks
+5. **Schemas**: MongoDB schemas for new collections (Article, Dispute, AuditLog, PlatformSettings)
+
+### Module Organization
+- `admin/` - Admin-specific operations (login, signup, management)
+- `article/` - Article management
+- `dispute/` - Dispute management
+- `audit/` - Audit logging
+- Extend existing: `user/`, `organization/`, `service-request/`, `quote/`, `order/`
+
+## Security Requirements
+- All admin endpoints require authentication
+- Role-based access control (RBAC)
+- Audit logging for all admin actions
+- Input validation on all DTOs
+- Proper error handling and messages
+
+## Database Collections
+1. `users` - Extended with role and status
+2. `organizations` - Extended with status and admin fields
+3. `serviceRequests` - Existing
+4. `quotes` - Existing
+5. `orders` - Extended with admin notes
+6. `articles` - New collection
+7. `disputes` - New collection
+8. `auditLogs` - New collection
+9. `platformSettings` - New collection (single document)

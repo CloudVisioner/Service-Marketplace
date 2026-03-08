@@ -536,6 +536,10 @@ export class ServiceRequestService {
 			];
 		}
 
+		if (input.search.isFlagged !== undefined && input.search.isFlagged !== null) {
+			match.isFlagged = input.search.isFlagged;
+		}
+
 		const sort: T = { [input?.sort ?? 'createdAt']: -1 };
 
 		const result = await this.serviceRequestModel
@@ -1001,5 +1005,64 @@ export class ServiceRequestService {
 		}
 
 		return org;
+	}
+
+	// ============================================================================
+	// ADMIN METHODS
+	// ============================================================================
+
+	/**
+	 * Admin: Get service request by ID (with all quotes)
+	 */
+	public async getServiceRequestByIdForAdmin(requestId: string): Promise<ServiceRequest> {
+		const requestIdObj = shapeIntoMongoObjectId(requestId);
+		return await this.getServiceRequest(null, requestIdObj);
+	}
+
+	/**
+	 * Admin: Close service request
+	 */
+	public async closeServiceRequestForAdmin(requestId: string, adminId: ObjectId): Promise<ServiceRequest> {
+		const requestIdObj = shapeIntoMongoObjectId(requestId);
+		return await this.updateServiceRequestStatus(requestIdObj, ServiceRequestStatus.CLOSED, adminId, 'ADMIN');
+	}
+
+	/**
+	 * Admin: Flag service request (creates dispute)
+	 */
+	public async flagServiceRequestForAdmin(requestId: string, reason: string, adminId: ObjectId): Promise<ServiceRequest> {
+		const requestIdObj = shapeIntoMongoObjectId(requestId);
+		const request = await this.serviceRequestModel.findById(requestIdObj).exec();
+
+		if (!request) {
+			throw new BadRequestException('Service request not found.');
+		}
+
+		// Set isFlagged to true and store flag details
+		const result = await this.serviceRequestModel.findByIdAndUpdate(
+			requestIdObj,
+			{
+				isFlagged: true,
+				flaggedAt: new Date(),
+				flaggedBy: adminId,
+				flagReason: reason,
+			},
+			{ new: true },
+		).exec();
+
+		if (!result) {
+			throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Admin: Delete service request (hard delete)
+	 */
+	public async deleteServiceRequestForAdmin(requestId: string): Promise<boolean> {
+		const requestIdObj = shapeIntoMongoObjectId(requestId);
+		const result = await this.serviceRequestModel.findByIdAndDelete(requestIdObj).exec();
+		return !!result;
 	}
 }

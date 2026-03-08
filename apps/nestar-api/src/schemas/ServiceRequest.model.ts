@@ -88,6 +88,28 @@ const ServiceRequestSchema = new Schema(
 			required: true,
 			ref: 'User',
 		},
+
+		isFlagged: {
+			type: Boolean,
+			default: false,
+			required: true,
+		},
+
+		flaggedAt: {
+			type: Date,
+			required: false,
+		},
+
+		flaggedBy: {
+			type: Schema.Types.ObjectId,
+			required: false,
+			ref: 'User',
+		},
+
+		flagReason: {
+			type: String,
+			required: false,
+		},
 	},
 	{ timestamps: true, collection: 'serviceRequests' },
 );

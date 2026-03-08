@@ -34,6 +34,9 @@ export class Quote {
 	@Field(() => Date)
 	quoteValidUntil: Date;
 
+	@Field(() => Boolean, { nullable: true })
+	isFlagged?: boolean;
+
 	@Field(() => Date)
 	createdAt: Date;
 

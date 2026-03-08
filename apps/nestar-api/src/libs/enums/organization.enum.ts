@@ -13,6 +13,10 @@ export enum OrganizationStatus {
 	ACTIVE = 'ACTIVE',
 	INACTIVE = 'INACTIVE',
 	PENDING = 'PENDING',
+	PENDING_REVIEW = 'PENDING_REVIEW', // Admin-specific: awaiting admin approval
+	APPROVED = 'APPROVED', // Admin-specific: approved by admin
+	REJECTED = 'REJECTED', // Admin-specific: rejected by admin
+	SUSPENDED = 'SUSPENDED', // Admin-specific: suspended by admin
 	BLOCKED = 'BLOCKED',
 	DELETED = 'DELETED',
 }

@@ -81,4 +81,164 @@ export class OrderService {
 
 		return cancelledOrder;
 	}
+
+	// ============================================================================
+	// ADMIN METHODS
+	// ============================================================================
+
+	/**
+	 * Admin: Get all orders with pagination and filtering
+	 */
+	public async getAllOrdersForAdmin(input: any): Promise<any> {
+		const match: any = {};
+
+		if (input.search) {
+			if (input.search.orderStatus) {
+				match.orderStatus = input.search.orderStatus;
+			}
+			if (input.search.buyerOrgId) {
+				match.orderBuyerOrgId = shapeIntoMongoObjectId(input.search.buyerOrgId);
+			}
+			if (input.search.providerOrgId) {
+				match.orderProviderOrgId = shapeIntoMongoObjectId(input.search.providerOrgId);
+			}
+			if (input.search.amountMin || input.search.amountMax) {
+				match.orderAmount = {};
+				if (input.search.amountMin) {
+					match.orderAmount.$gte = input.search.amountMin;
+				}
+				if (input.search.amountMax) {
+					match.orderAmount.$lte = input.search.amountMax;
+				}
+			}
+			if (input.search.createdAtFrom || input.search.createdAtTo) {
+				match.createdAt = {};
+				if (input.search.createdAtFrom) {
+					match.createdAt.$gte = new Date(input.search.createdAtFrom);
+				}
+				if (input.search.createdAtTo) {
+					match.createdAt.$lte = new Date(input.search.createdAtTo);
+				}
+			}
+		}
+
+		const result = await this.orderModel
+			.aggregate([
+				{ $match: match },
+				{ $sort: { createdAt: -1 } },
+				{
+					$facet: {
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+							{
+								$lookup: {
+									from: 'organizations',
+									localField: 'orderBuyerOrgId',
+									foreignField: '_id',
+									as: 'buyerOrg',
+								},
+							},
+							{
+								$unwind: { path: '$buyerOrg', preserveNullAndEmptyArrays: true },
+							},
+							{
+								$lookup: {
+									from: 'organizations',
+									localField: 'orderProviderOrgId',
+									foreignField: '_id',
+									as: 'providerOrg',
+								},
+							},
+							{
+								$unwind: { path: '$providerOrg', preserveNullAndEmptyArrays: true },
+							},
+						],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+
+		if (!result.length) {
+			return { list: [], metaCounter: [{ total: 0 }] };
+		}
+
+		return result[0];
+	}
+
+	/**
+	 * Admin: Get order by ID
+	 */
+	public async getOrderByIdForAdmin(orderId: string): Promise<Order> {
+		const orderIdObj = shapeIntoMongoObjectId(orderId);
+		const order = await this.orderModel.findById(orderIdObj).exec();
+
+		if (!order) {
+			throw new BadRequestException('Order not found.');
+		}
+
+		return order;
+	}
+
+	/**
+	 * Admin: Change order status
+	 */
+	public async changeOrderStatusForAdmin(orderId: string, orderStatus: OrderStatus, adminNotes: string | undefined, adminId: ObjectId): Promise<Order> {
+		const orderIdObj = shapeIntoMongoObjectId(orderId);
+		const order = await this.orderModel.findById(orderIdObj).exec();
+
+		if (!order) {
+			throw new BadRequestException('Order not found.');
+		}
+
+		const updateData: any = {
+			orderStatus,
+		};
+
+		if (adminNotes) {
+			updateData.adminNotes = adminNotes;
+		}
+
+		const result = await this.orderModel.findByIdAndUpdate(
+			orderIdObj,
+			updateData,
+			{ new: true },
+		).exec();
+
+		if (!result) {
+			throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Admin: Add admin notes to order
+	 */
+	public async addOrderAdminNotesForAdmin(orderId: string, adminNotes: string, adminId: ObjectId): Promise<Order> {
+		const orderIdObj = shapeIntoMongoObjectId(orderId);
+		const order = await this.orderModel.findById(orderIdObj).exec();
+
+		if (!order) {
+			throw new BadRequestException('Order not found.');
+		}
+
+		const existingNotes = (order as any).adminNotes || '';
+		const newNotes = existingNotes
+			? `${existingNotes}\n\n[${new Date().toISOString()}] ${adminNotes}`
+			: adminNotes;
+
+		const result = await this.orderModel.findByIdAndUpdate(
+			orderIdObj,
+			{ adminNotes: newNotes },
+			{ new: true },
+		).exec();
+
+		if (!result) {
+			throw new InternalServerErrorException(Message.UPDATE_FAILED);
+		}
+
+		return result;
+	}
 }

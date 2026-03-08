@@ -4,6 +4,8 @@ export enum UserRole {
 	BUYER = 'BUYER',
 	PROVIDER = 'PROVIDER',
 	ADMIN = 'ADMIN',
+	SUPER_ADMIN = 'SUPER_ADMIN',
+	CONTENT_ADMIN = 'CONTENT_ADMIN',
 }
 registerEnumType(UserRole, {
     name: 'UserRole',
@@ -11,8 +13,10 @@ registerEnumType(UserRole, {
 
 export enum UserStatus {
 	ACTIVE = 'ACTIVE',
-	BLOCK = 'BLOCK',
-	DELETE = 'DELETE',
+	SUSPENDED = 'SUSPENDED',
+	INACTIVE = 'INACTIVE',
+	BLOCK = 'BLOCK', // Legacy - use SUSPENDED instead
+	DELETE = 'DELETE', // Legacy - use INACTIVE instead
 }
 registerEnumType(UserStatus, {
     name: 'UserStatus',

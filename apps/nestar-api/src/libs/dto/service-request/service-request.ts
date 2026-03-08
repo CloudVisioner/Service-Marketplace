@@ -59,6 +59,9 @@ export class ServiceRequest {
 	@Field(() => String, { nullable: true })
 	reqCreatedByUserId?: mongoose.ObjectId; // Can be null for old records
 
+	@Field(() => Boolean, { nullable: true })
+	isFlagged?: boolean;
+
 	@Field(() => Date)
 	createdAt: Date;
 

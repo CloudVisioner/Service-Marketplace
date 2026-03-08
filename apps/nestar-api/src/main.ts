@@ -4,7 +4,7 @@ import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { LoggingInterceptor } from './libs/interceptor/Loggin.interceptor';
 import { graphqlUploadExpress } from 'graphql-upload';
 import * as express from 'express';
-import { IoAdapter } from '@nestjs/platform-socket.io';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
@@ -29,7 +29,8 @@ async function bootstrap() {
 	app.use(graphqlUploadExpress({ maxFileSize: 15000000, maxFiles: 10 }));
 	app.use('/uploads', express.static('./uploads')); // ochiqlash
 
-	app.useWebSocketAdapter(new IoAdapter(app));
+	// Enable WebSocket adapter (REQUIRED for native WebSocket support)
+	app.useWebSocketAdapter(new WsAdapter(app));
 	await app.listen(process.env.PORT_API ?? 3000);
 	console.log(`✅ Nestar API Server is running on: http://localhost:${process.env.PORT_API ?? 3000}`);
 	console.log(`📡 GraphQL Playground: http://localhost:${process.env.PORT_API ?? 3000}/graphql`);

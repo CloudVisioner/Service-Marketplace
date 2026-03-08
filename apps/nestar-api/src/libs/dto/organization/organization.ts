@@ -144,6 +144,9 @@ export class Organization {
 	@Field(() => Date, { nullable: true })
 	deletedAt?: Date;
 
+	@Field(() => Boolean, { nullable: true })
+	isFlagged?: boolean;
+
 	@Field(() => Date)
 	createdAt: Date;
 

@@ -72,6 +72,10 @@ export class ServiceRequestSearch {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	text?: string;
+
+	@IsOptional()
+	@Field(() => Boolean, { nullable: true })
+	isFlagged?: boolean;
 }
 
 @InputType()

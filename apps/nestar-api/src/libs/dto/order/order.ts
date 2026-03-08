@@ -32,6 +32,9 @@ export class Order {
 	@Field(() => Number)
 	orderAmount: number;
 
+	@Field(() => String, { nullable: true })
+	adminNotes?: string;
+
 	@Field(() => Date)
 	createdAt: Date;
 

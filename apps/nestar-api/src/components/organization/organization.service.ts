@@ -10,7 +10,7 @@ import { shapeIntoMongoObjectId } from '../../libs/config';
 import { LikeService } from '../like/like.service';
 import { LikeInput } from '../../libs/dto/like/like.input';
 import { LikeGroup } from '../../libs/enums/like.enum';
-import { OrganizationStatus } from '../../libs/enums/organization.enum';
+import { OrganizationStatus, OrganizationType } from '../../libs/enums/organization.enum';
 import { UserRole } from '../../libs/enums/user.enum';
 
 @Injectable()
@@ -21,6 +21,18 @@ export class OrganizationService {
 		@InjectModel('Rating') private ratingModel: Model<any>,
 		private likeService: LikeService,
 	) {}
+
+	/**
+	 * Helper method to safely get orgType from organization object
+	 * Handles both Document and plain object types from MongoDB
+	 * @param org - Organization document or plain object
+	 * @returns OrganizationType or undefined
+	 */
+	private getOrgType(org: any): OrganizationType | undefined {
+		// orgType is the database field name, but TypeScript types use organizationType
+		// This helper safely accesses the actual DB field
+		return org?.orgType as OrganizationType | undefined;
+	}
 
 	/**
 	 * Normalizes all array fields on an organization document.
@@ -513,7 +525,8 @@ export class OrganizationService {
 		if (!orgCheck) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
 
 		// Rule: Only SERVICE_PROVIDER orgs can be liked
-		if (orgCheck.orgType !== 'SERVICE_PROVIDER') {
+		const orgType = this.getOrgType(orgCheck);
+		if (orgType !== OrganizationType.SERVICE_PROVIDER) {
 			throw new BadRequestException('Only SERVICE_PROVIDER organizations can be liked.');
 		}
 
@@ -1195,7 +1208,8 @@ export class OrganizationService {
 		}
 
 		// Verify it's a SERVICE_PROVIDER organization
-		if (org.orgType !== 'SERVICE_PROVIDER') {
+		const orgType = this.getOrgType(org);
+		if (orgType !== OrganizationType.SERVICE_PROVIDER) {
 			throw new BadRequestException('This is not a provider organization.');
 		}
 
