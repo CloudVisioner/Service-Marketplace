@@ -9,30 +9,41 @@ export class AuthGuard implements CanActivate {
 	async canActivate(context: ExecutionContext | any): Promise<boolean> {
 		console.info('--- @guard() Authentication [AuthGuard] ---');
 
-		if (context.contextType === 'graphql') {
-			const request = context.getArgByIndex(2).req;
+		const contextType = context.getType();
 
-			const bearerToken = request.headers.authorization;
-			if (!bearerToken) throw new BadRequestException(Message.TOKEN_NOT_EXIST);
-
-			const token = bearerToken.split(' ')[1];
-			
-			try {
-				const authUser = await this.authService.verifyUserToken(token);
-				if (!authUser) throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
-
-				console.log('userNick[auth] =>', authUser.userNick);
-				request.body.authUser = authUser;
-
-				return true;
-			} catch (err) {
-				console.error('Token verification failed:', err.message);
-				throw new UnauthorizedException(err.message || Message.NOT_AUTHENTICATED);
-			}
+		// Support both GraphQL and HTTP endpoints
+		let request: any;
+		if (contextType === 'graphql') {
+			request = context.getArgByIndex(2).req;
+		} else if (contextType === 'http') {
+			request = context.switchToHttp().getRequest();
+		} else {
+			// For other transport types, skip auth by this guard
+			return true;
 		}
-	
 
-		// description => http, rpc, gprs and etc are ignored
+		const bearerToken = request.headers.authorization;
+		console.log('AuthGuard - Authorization header:', bearerToken);
 
+		if (!bearerToken) {
+			throw new BadRequestException(Message.TOKEN_NOT_EXIST);
+		}
+
+		const token = bearerToken.split(' ')[1];
+
+		try {
+			const authUser = await this.authService.verifyUserToken(token);
+			if (!authUser) {
+				throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
+			}
+
+			console.log('userNick[auth] =>', authUser.userNick);
+			request.body.authUser = authUser;
+
+			return true;
+		} catch (err) {
+			console.error('Token verification failed:', err.message);
+			throw new UnauthorizedException(err.message || Message.NOT_AUTHENTICATED);
+		}
 	}
 }

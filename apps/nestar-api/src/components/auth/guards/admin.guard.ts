@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+	import { CanActivate, ExecutionContext, Injectable, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthService } from '../auth.service';
 import { UserRole } from '../../../libs/enums/user.enum';
@@ -23,8 +23,10 @@ export class AdminGuard implements CanActivate {
 
 		console.info(`--- AdminGuard: Checking admin access ---`);
 
-		if (context.contextType === 'graphql') {
-			const request = context.getArgByIndex(2).req;
+		const contextType = context.getType<'graphql' | 'http' | 'rpc'>();
+
+		if (contextType === 'graphql') {
+			const request = (context as any).getArgByIndex(2).req;
 			const bearerToken = request.headers.authorization;
 			
 			if (!bearerToken) {

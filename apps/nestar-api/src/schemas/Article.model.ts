@@ -28,6 +28,10 @@ const ArticleSchema = new Schema(
 			type: String,
 			required: false,
 		},
+		articleCoverImage: {
+			type: String,
+			required: false,
+		},
 		tags: {
 			type: [String],
 			default: [],

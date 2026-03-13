@@ -1,0 +1,1 @@
+"The backend still logs a warning that CHATBASE_IDENTITY_SECRET is not set. I have it in my .env. Please check app.module.ts and ensure the envFilePath is actually pointing to the correct absolute path. Also, add a console.log in main.ts to print process.env.CHATBASE_IDENTITY_SECRET so we can see if Node sees it at all."

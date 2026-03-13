@@ -443,6 +443,10 @@ export class CreateArticleInput {
 	thumbnail?: string;
 
 	@IsOptional()
+	@Field(() => String, { nullable: true })
+	articleCoverImage?: string;
+
+	@IsOptional()
 	@Field(() => [String], { nullable: true })
 	tags?: string[];
 
@@ -481,6 +485,10 @@ export class UpdateArticleInput {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	thumbnail?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	articleCoverImage?: string;
 
 	@IsOptional()
 	@Field(() => [String], { nullable: true })
@@ -728,6 +736,121 @@ export class UpdatePlatformSettingsInput {
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	privacyLink?: string;
+}
+
+// ============================================================================
+// CUSTOMER SUPPORT CENTER INPUTS
+// ============================================================================
+
+@InputType()
+export class CSQuickAccessCardInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	title: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	description: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	icon: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	link: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	color: string;
+}
+
+@InputType()
+export class CSContactMethodInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	type: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	label: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	value: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	availability: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	icon: string;
+}
+
+@InputType()
+export class UpdateCSCenterContentInput {
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	heroTitle?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	heroDescription?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	heroImage?: string;
+
+	@IsOptional()
+	@Field(() => [CSQuickAccessCardInput], { nullable: true })
+	quickAccessCards?: CSQuickAccessCardInput[];
+
+	@IsOptional()
+	@Field(() => [CSContactMethodInput], { nullable: true })
+	contactMethods?: CSContactMethodInput[];
+}
+
+@InputType()
+export class CreateCSFAQInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	question: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	answer: string;
+
+	@IsNotEmpty()
+	@Field(() => String)
+	category: string;
+
+	@IsNotEmpty()
+	@Field(() => Int)
+	order: number;
+}
+
+@InputType()
+export class UpdateCSFAQInput {
+	@IsNotEmpty()
+	@Field(() => String)
+	faqId: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	question?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	answer?: string;
+
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	category?: string;
+
+	@IsOptional()
+	@Field(() => Int, { nullable: true })
+	order?: number;
 }
 
 // ============================================================================

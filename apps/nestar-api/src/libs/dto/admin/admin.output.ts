@@ -153,6 +153,9 @@ export class Article {
 	@Field(() => String, { nullable: true })
 	thumbnail?: string;
 
+	@Field(() => String, { nullable: true })
+	articleCoverImage?: string;
+
 	@Field(() => [String])
 	tags: string[];
 
@@ -393,6 +396,100 @@ export class PlatformSettings {
 
 	@Field(() => String)
 	updatedBy: mongoose.ObjectId;
+}
+
+// ============================================================================
+// CUSTOMER SUPPORT CENTER OUTPUTS
+// ============================================================================
+
+@ObjectType()
+export class CSQuickAccessCard {
+	@Field(() => String)
+	title: string;
+
+	@Field(() => String)
+	description: string;
+
+	@Field(() => String)
+	icon: string;
+
+	@Field(() => String)
+	link: string;
+
+	@Field(() => String)
+	color: string;
+}
+
+@ObjectType()
+export class CSContactMethod {
+	@Field(() => String)
+	type: string;
+
+	@Field(() => String)
+	label: string;
+
+	@Field(() => String)
+	value: string;
+
+	@Field(() => String)
+	availability: string;
+
+	@Field(() => String)
+	icon: string;
+}
+
+@ObjectType()
+export class CSFAQ {
+	@Field(() => String)
+	_id: mongoose.ObjectId;
+
+	@Field(() => String)
+	question: string;
+
+	@Field(() => String)
+	answer: string;
+
+	@Field(() => String)
+	category: string;
+
+	@Field(() => Int)
+	order: number;
+
+	@Field(() => Date)
+	createdAt: Date;
+
+	@Field(() => Date)
+	updatedAt: Date;
+}
+
+@ObjectType()
+export class CSCenterContent {
+	@Field(() => String)
+	_id: mongoose.ObjectId;
+
+	@Field(() => String, { nullable: true })
+	heroTitle?: string;
+
+	@Field(() => String, { nullable: true })
+	heroDescription?: string;
+
+	@Field(() => String, { nullable: true })
+	heroImage?: string;
+
+	@Field(() => [CSQuickAccessCard], { nullable: true })
+	quickAccessCards?: CSQuickAccessCard[];
+
+	@Field(() => [CSContactMethod], { nullable: true })
+	contactMethods?: CSContactMethod[];
+
+	@Field(() => [CSFAQ], { nullable: true })
+	faqs?: CSFAQ[];
+
+	@Field(() => Date, { nullable: true })
+	updatedAt?: Date;
+
+	@Field(() => String, { nullable: true })
+	updatedBy?: mongoose.ObjectId;
 }
 
 // ============================================================================

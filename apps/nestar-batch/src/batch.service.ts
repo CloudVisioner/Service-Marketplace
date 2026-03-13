@@ -9,9 +9,21 @@ export class BatchService {
 		@InjectModel('User') private readonly userModel: Model<User>,
 	) {}
 
-	// Placeholder for future batch operations
+	// Placeholder for future rollback operations
 	public async batchRollerback(): Promise<void> {
-		// B2B batch operations can be added here
+		// TODO: implement real rollback logic
 		console.log('Batch rollerback - placeholder for B2B operations');
+	}
+
+	// Placeholder for recalculating top properties
+	public async batchTopProperties(): Promise<void> {
+		// TODO: implement aggregation logic for top properties
+		console.log('Batch top properties - placeholder for B2B operations');
+	}
+
+	// Placeholder for recalculating top agents
+	public async batchTopAgents(): Promise<void> {
+		// TODO: implement aggregation logic for top agents
+		console.log('Batch top agents - placeholder for B2B operations');
 	}
 }

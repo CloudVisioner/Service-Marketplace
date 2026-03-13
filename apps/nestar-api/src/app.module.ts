@@ -12,7 +12,10 @@ import { SocketModule } from './socket/socket.module';
 
 @Module({
 	imports: [
-		ConfigModule.forRoot(),
+		ConfigModule.forRoot({
+			isGlobal: true,
+			envFilePath: ['.env', 'apps/nestar-api/.env'],
+		}),
 		GraphQLModule.forRoot({
 			driver: ApolloDriver,
 			playground: true,

@@ -6,6 +6,7 @@ import { ArticleModule } from './article/article.module';
 import { DisputeModule } from './dispute/dispute.module';
 import { AuditModule } from './audit/audit.module';
 import { PlatformModule } from './platform/platform.module';
+import { CustomerSupportModule } from './customer-support/customer-support.module';
 import UserSchema from '../../schemas/User.model';
 import OrganizationSchema from '../../schemas/Organization.model';
 import ServiceRequestSchema from '../../schemas/ServiceRequest.model';
@@ -30,6 +31,7 @@ import { OrderModule } from '../order/order.module';
 		DisputeModule,
 		AuditModule,
 		PlatformModule,
+		CustomerSupportModule,
 		ServiceRequestModule,
 		QuoteModule,
 		OrderModule,

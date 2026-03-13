@@ -27,7 +27,7 @@ interface InfoPayload {
 
 // Notification payload interface
 interface NotificationPayload {
-	event: string;
+	event?: string;
 	_id: string;
 	type: string;
 	message: string;

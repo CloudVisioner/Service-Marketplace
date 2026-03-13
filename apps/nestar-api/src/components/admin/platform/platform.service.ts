@@ -1,12 +1,12 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ObjectId, Document } from 'mongoose';
+import { HydratedDocument, Model, ObjectId } from 'mongoose';
 import { PlatformSettings } from '../../../libs/dto/admin/admin.output';
 import { UpdatePlatformSettingsInput } from '../../../libs/dto/admin/admin.input';
 import { Message } from '../../../libs/enums/common.enum';
 import { shapeIntoMongoObjectId } from '../../../libs/config';
 
-type PlatformSettingsDocument = PlatformSettings & Document;
+type PlatformSettingsDocument = HydratedDocument<PlatformSettings>;
 
 @Injectable()
 export class PlatformSettingsService {
@@ -18,7 +18,7 @@ export class PlatformSettingsService {
 	 * Get platform settings (creates default if none exist)
 	 */
 	public async getPlatformSettings(): Promise<PlatformSettingsDocument> {
-		let settings = await this.platformSettingsModel.findOne().exec();
+		let settings = (await this.platformSettingsModel.findOne().exec()) as PlatformSettingsDocument | null;
 
 		if (!settings) {
 			// Create default settings
@@ -41,7 +41,7 @@ export class PlatformSettingsService {
 			updatedBy: adminId || shapeIntoMongoObjectId('000000000000000000000000'), // Dummy ID if no admin
 		};
 
-		const settings = await this.platformSettingsModel.create(defaultSettings);
+		const settings = (await this.platformSettingsModel.create(defaultSettings)) as PlatformSettingsDocument;
 		return settings;
 	}
 
@@ -50,7 +50,7 @@ export class PlatformSettingsService {
 	 */
 	public async updatePlatformSettings(input: UpdatePlatformSettingsInput, adminId: ObjectId): Promise<PlatformSettingsDocument> {
 		// Get or create settings
-		let settings = await this.platformSettingsModel.findOne().exec();
+		let settings = (await this.platformSettingsModel.findOne().exec()) as PlatformSettingsDocument | null;
 
 		if (!settings) {
 			settings = await this.initializePlatformSettings(adminId);
@@ -77,11 +77,11 @@ export class PlatformSettingsService {
 			updateData.privacyLink = input.privacyLink;
 		}
 
-		const result = await this.platformSettingsModel.findByIdAndUpdate(
+		const result = (await this.platformSettingsModel.findByIdAndUpdate(
 			settings._id,
 			updateData,
 			{ new: true },
-		).exec();
+		).exec()) as PlatformSettingsDocument | null;
 
 		if (!result) {
 			throw new InternalServerErrorException(Message.UPDATE_FAILED);

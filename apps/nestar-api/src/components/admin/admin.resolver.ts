@@ -6,6 +6,7 @@ import { ArticleService } from './article/article.service';
 import { DisputeService } from './dispute/dispute.service';
 import { AuditService } from './audit/audit.service';
 import { PlatformSettingsService } from './platform/platform.service';
+import { CustomerSupportService } from './customer-support/customer-support.service';
 import { ServiceRequestService } from '../service-request/service-request.service';
 import { QuoteService } from '../quote/quote.service';
 import { OrderService } from '../order/order.service';
@@ -38,6 +39,9 @@ import {
 	GetAllAdminsInput,
 	InviteAdminInput,
 	UpdatePlatformSettingsInput,
+	UpdateCSCenterContentInput,
+	CreateCSFAQInput,
+	UpdateCSFAQInput,
 	AdminLoginInput,
 	AdminSignupInput,
 	UpdateAdminProfileInput,
@@ -58,6 +62,8 @@ import {
 	GetAllAdminsResponse,
 	InviteAdminResponse,
 	PlatformSettings,
+	CSCenterContent,
+	CSFAQ,
 	DashboardStatistics,
 	AdminLoginResponse,
 	SuccessResponse,
@@ -78,6 +84,7 @@ export class AdminResolver {
 		private readonly disputeService: DisputeService,
 		private readonly auditService: AuditService,
 		private readonly platformSettingsService: PlatformSettingsService,
+		private readonly customerSupportService: CustomerSupportService,
 		private readonly serviceRequestService: ServiceRequestService,
 		private readonly quoteService: QuoteService,
 		private readonly orderService: OrderService,
@@ -368,24 +375,42 @@ export class AdminResolver {
 	// ARTICLE MANAGEMENT
 	// ============================================================================
 
-	@UseGuards(AuthGuard, AdminGuard)
+	/**
+	 * Public query: Get all published articles (no auth required)
+	 */
 	@Query(() => GetAllArticlesResponse)
-	public async getAllArticles(@Args('input') input: GetAllArticlesInput): Promise<GetAllArticlesResponse> {
-		console.log('Query: getAllArticles');
-		return await this.articleService.getAllArticles(input);
+	public async getPublishedArticles(@Args('input') input: GetAllArticlesInput): Promise<GetAllArticlesResponse> {
+		console.log('Query: getPublishedArticles (public)');
+		return await this.articleService.getPublishedArticles(input);
 	}
 
-	@UseGuards(AuthGuard, AdminGuard)
-	@Query(() => Article)
-	public async getArticleById(@Args('articleId') articleId: string): Promise<Article> {
-		console.log('Query: getArticleById');
-		return await this.articleService.getArticleById(articleId);
-	}
-
+	/**
+	 * Public query: Get article by slug (no auth required)
+	 */
 	@Query(() => Article)
 	public async getArticleBySlug(@Args('slug') slug: string): Promise<Article> {
 		console.log('Query: getArticleBySlug (public)');
 		return await this.articleService.getArticleBySlug(slug);
+	}
+
+	/**
+	 * Admin query: Get all articles including drafts (admin only)
+	 */
+	@UseGuards(AuthGuard, AdminGuard)
+	@Query(() => GetAllArticlesResponse)
+	public async getAllArticles(@Args('input') input: GetAllArticlesInput): Promise<GetAllArticlesResponse> {
+		console.log('Query: getAllArticles (admin)');
+		return await this.articleService.getAllArticles(input);
+	}
+
+	/**
+	 * Admin query: Get article by ID (admin only)
+	 */
+	@UseGuards(AuthGuard, AdminGuard)
+	@Query(() => Article)
+	public async getArticleById(@Args('articleId') articleId: string): Promise<Article> {
+		console.log('Query: getArticleById (admin)');
+		return await this.articleService.getArticleById(articleId);
 	}
 
 	@UseGuards(AuthGuard, AdminGuard)
@@ -563,6 +588,68 @@ export class AdminResolver {
 	): Promise<PlatformSettings> {
 		console.log('Mutation: updatePlatformSettings');
 		return await this.platformSettingsService.updatePlatformSettings(input, adminId);
+	}
+
+	// ============================================================================
+	// CUSTOMER SUPPORT CENTER
+	// ============================================================================
+
+	/**
+	 * Public query: Get CS Center content (used by public page and admin)
+	 */
+	@Query(() => CSCenterContent)
+	public async getCSCenterContent(): Promise<CSCenterContent> {
+		console.log('Query: getCSCenterContent');
+		return await this.customerSupportService.getCSCenterContent();
+	}
+
+	/**
+	 * Admin mutation: Update CS Center content (hero, cards, contact methods)
+	 */
+	@UseGuards(AuthGuard, AdminGuard)
+	@Mutation(() => CSCenterContent)
+	public async updateCSCenterContent(
+		@Args('input') input: UpdateCSCenterContentInput,
+		@AuthUser('_id') adminId: ObjectId,
+	): Promise<CSCenterContent> {
+		console.log('Mutation: updateCSCenterContent');
+		return await this.customerSupportService.updateCSCenterContent(input, adminId);
+	}
+
+	/**
+	 * Admin mutation: Create FAQ
+	 */
+	@UseGuards(AuthGuard, AdminGuard)
+	@Mutation(() => CSFAQ)
+	public async createCSFAQ(
+		@Args('input') input: CreateCSFAQInput,
+	): Promise<CSFAQ> {
+		console.log('Mutation: createCSFAQ');
+		return await this.customerSupportService.createCSFAQ(input);
+	}
+
+	/**
+	 * Admin mutation: Update FAQ
+	 */
+	@UseGuards(AuthGuard, AdminGuard)
+	@Mutation(() => CSFAQ)
+	public async updateCSFAQ(
+		@Args('input') input: UpdateCSFAQInput,
+	): Promise<CSFAQ> {
+		console.log('Mutation: updateCSFAQ');
+		return await this.customerSupportService.updateCSFAQ(input);
+	}
+
+	/**
+	 * Admin mutation: Delete FAQ
+	 */
+	@UseGuards(AuthGuard, AdminGuard)
+	@Mutation(() => CSFAQ)
+	public async deleteCSFAQ(
+		@Args('faqId') faqId: string,
+	): Promise<CSFAQ> {
+		console.log('Mutation: deleteCSFAQ');
+		return await this.customerSupportService.deleteCSFAQ(faqId);
 	}
 
 	// ============================================================================

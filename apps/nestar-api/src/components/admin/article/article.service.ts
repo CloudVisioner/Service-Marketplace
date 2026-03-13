@@ -49,7 +49,59 @@ export class ArticleService {
 	}
 
 	/**
-	 * Get all articles with pagination and filtering
+	 * Get all published articles (public - no auth required)
+	 */
+	public async getPublishedArticles(input: GetAllArticlesInput): Promise<GetAllArticlesResponse> {
+		const match: T = {
+			status: ArticleStatus.PUBLISHED,
+		};
+
+		if (input.search) {
+			if (input.search.title) {
+				match.title = { $regex: input.search.title, $options: 'i' };
+			}
+			if (input.search.slug) {
+				match.slug = input.search.slug;
+			}
+			if (input.search.tags && input.search.tags.length > 0) {
+				match.tags = { $in: input.search.tags };
+			}
+			if (input.search.createdAtFrom || input.search.createdAtTo) {
+				match.createdAt = {};
+				if (input.search.createdAtFrom) {
+					match.createdAt.$gte = new Date(input.search.createdAtFrom);
+				}
+				if (input.search.createdAtTo) {
+					match.createdAt.$lte = new Date(input.search.createdAtTo);
+				}
+			}
+		}
+
+		const result = await this.articleModel
+			.aggregate([
+				{ $match: match },
+				{ $sort: { publishedAt: -1, createdAt: -1 } },
+				{
+					$facet: {
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+						],
+						metaCounter: [{ $count: 'total' }],
+					},
+				},
+			])
+			.exec();
+
+		if (!result.length) {
+			return { list: [], metaCounter: [{ total: 0 }] };
+		}
+
+		return result[0];
+	}
+
+	/**
+	 * Get all articles with pagination and filtering (admin only)
 	 */
 	public async getAllArticles(input: GetAllArticlesInput): Promise<GetAllArticlesResponse> {
 		const match: T = {};
@@ -157,6 +209,7 @@ export class ArticleService {
 				shortDescription: input.shortDescription,
 				body: input.body,
 				thumbnail: input.thumbnail,
+				articleCoverImage: input.articleCoverImage,
 				tags: input.tags || [],
 				status: input.status,
 				publishedAt,
@@ -215,6 +268,10 @@ export class ArticleService {
 
 			if (input.thumbnail !== undefined) {
 				updateData.thumbnail = input.thumbnail;
+			}
+
+			if (input.articleCoverImage !== undefined) {
+				updateData.articleCoverImage = input.articleCoverImage;
 			}
 
 			if (input.tags !== undefined) {

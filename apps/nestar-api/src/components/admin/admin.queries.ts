@@ -418,6 +418,32 @@ export const ADD_ORDER_ADMIN_NOTES = gql`
 // ARTICLE MANAGEMENT
 // ============================================================================
 
+// Public query: Get all published articles (no auth required)
+export const GET_PUBLISHED_ARTICLES = gql`
+  query GetPublishedArticles($input: GetAllArticlesInput!) {
+    getPublishedArticles(input: $input) {
+      list {
+        _id
+        title
+        slug
+        shortDescription
+        body
+        thumbnail
+        articleCoverImage
+        tags
+        status
+        publishedAt
+        createdAt
+        updatedAt
+      }
+      metaCounter {
+        total
+      }
+    }
+  }
+`;
+
+// Admin query: Get all articles including drafts (admin auth required)
 export const GET_ALL_ARTICLES = gql`
   query GetAllArticles($input: GetAllArticlesInput!) {
     getAllArticles(input: $input) {
@@ -428,6 +454,7 @@ export const GET_ALL_ARTICLES = gql`
         shortDescription
         body
         thumbnail
+        articleCoverImage
         tags
         status
         publishedAt
@@ -452,6 +479,7 @@ export const GET_ARTICLE_BY_ID = gql`
       shortDescription
       body
       thumbnail
+      articleCoverImage
       tags
       status
       publishedAt
@@ -470,6 +498,7 @@ export const GET_ARTICLE_BY_SLUG = gql`
       shortDescription
       body
       thumbnail
+      articleCoverImage
       tags
       status
       publishedAt
@@ -485,8 +514,15 @@ export const CREATE_ARTICLE = gql`
       _id
       title
       slug
+      shortDescription
+      body
+      thumbnail
+      articleCoverImage
+      tags
       status
+      publishedAt
       createdAt
+      updatedAt
     }
   }
 `;
@@ -497,7 +533,14 @@ export const UPDATE_ARTICLE = gql`
       _id
       title
       slug
+      shortDescription
+      body
+      thumbnail
+      articleCoverImage
+      tags
       status
+      publishedAt
+      createdAt
       updatedAt
     }
   }

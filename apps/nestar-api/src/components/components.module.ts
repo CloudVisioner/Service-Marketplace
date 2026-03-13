@@ -10,6 +10,7 @@ import { ServiceRequestModule } from './service-request/service-request.module';
 import { NotificationModule } from './notification/notification.module';
 import { OrderModule } from './order/order.module';
 import { AdminModule } from './admin/admin.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
 	imports: [
@@ -24,6 +25,7 @@ import { AdminModule } from './admin/admin.module';
 		NotificationModule,
 		OrderModule,
 		AdminModule,
+		ChatModule,
 	],
 	providers: [],
 })

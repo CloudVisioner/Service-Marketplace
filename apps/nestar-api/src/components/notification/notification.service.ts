@@ -31,7 +31,7 @@ export class NotificationService {
 			// Emit real-time notification via WebSocket
 			try {
 				this.socketGateway.emitNotification(input.receiverUserId.toString(), {
-					_id: result._id,
+					_id: result._id.toString(),
 					type: result.type,
 					message: result.message,
 					read: result.read,
