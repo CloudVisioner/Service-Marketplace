@@ -156,7 +156,7 @@ export class CustomerSupportService {
 			.exec()) as CSFAQDocument | null;
 
 		if (!result) {
-			throw new NotFoundException(Message.NOT_FOUND);
+			throw new NotFoundException(Message.NO_DATA_FOUND);
 		}
 
 		return result;
@@ -169,7 +169,7 @@ export class CustomerSupportService {
 		const result = (await this.csFaqModel.findByIdAndDelete(faqId).exec()) as CSFAQDocument | null;
 
 		if (!result) {
-			throw new NotFoundException(Message.NOT_FOUND);
+			throw new NotFoundException(Message.NO_DATA_FOUND);
 		}
 
 		return result;

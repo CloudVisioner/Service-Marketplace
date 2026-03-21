@@ -813,6 +813,144 @@ export const UPDATE_PLATFORM_SETTINGS = gql`
 `;
 
 // ============================================================================
+// CUSTOMER SUPPORT CENTER
+// ============================================================================
+
+/**
+ * Public Query - No authentication required
+ * Get CS Center content with FAQs
+ */
+export const GET_CS_CENTER_CONTENT = gql`
+  query GetCSCenterContent {
+    getCSCenterContent {
+      _id
+      heroTitle
+      heroDescription
+      heroImage
+      quickAccessCards {
+        title
+        description
+        icon
+        link
+        color
+      }
+      contactMethods {
+        type
+        label
+        value
+        availability
+        icon
+      }
+      faqs {
+        _id
+        question
+        answer
+        category
+        order
+        createdAt
+        updatedAt
+      }
+      updatedAt
+      updatedBy
+    }
+  }
+`;
+
+/**
+ * Admin Mutation - Requires authentication
+ * Update CS Center content (hero, cards, contact methods)
+ */
+export const UPDATE_CS_CENTER_CONTENT = gql`
+  mutation UpdateCSCenterContent($input: UpdateCSCenterContentInput!) {
+    updateCSCenterContent(input: $input) {
+      _id
+      heroTitle
+      heroDescription
+      heroImage
+      quickAccessCards {
+        title
+        description
+        icon
+        link
+        color
+      }
+      contactMethods {
+        type
+        label
+        value
+        availability
+        icon
+      }
+      faqs {
+        _id
+        question
+        answer
+        category
+        order
+        createdAt
+        updatedAt
+      }
+      updatedAt
+      updatedBy
+    }
+  }
+`;
+
+/**
+ * Admin Mutation - Requires authentication
+ * Create a new FAQ
+ */
+export const CREATE_CS_FAQ = gql`
+  mutation CreateCSFAQ($input: CreateCSFAQInput!) {
+    createCSFAQ(input: $input) {
+      _id
+      question
+      answer
+      category
+      order
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+/**
+ * Admin Mutation - Requires authentication
+ * Update an existing FAQ
+ */
+export const UPDATE_CS_FAQ = gql`
+  mutation UpdateCSFAQ($input: UpdateCSFAQInput!) {
+    updateCSFAQ(input: $input) {
+      _id
+      question
+      answer
+      category
+      order
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+/**
+ * Admin Mutation - Requires authentication
+ * Delete an FAQ
+ */
+export const DELETE_CS_FAQ = gql`
+  mutation DeleteCSFAQ($faqId: String!) {
+    deleteCSFAQ(faqId: $faqId) {
+      _id
+      question
+      answer
+      category
+      order
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+// ============================================================================
 // FRONTEND USAGE EXAMPLES
 // ============================================================================
 
@@ -942,4 +1080,160 @@ export const UPDATE_PLATFORM_SETTINGS = gql`
  * // Access data:
  * // data.getDashboardStatistics.totalBuyers.current
  * // data.getDashboardStatistics.totalBuyers.change (percentage)
+ */
+
+/**
+ * GET CS CENTER CONTENT - Frontend Usage (Public - No auth required):
+ * 
+ * const { data, loading, error } = useQuery(GET_CS_CENTER_CONTENT);
+ * 
+ * // Access data:
+ * // data.getCSCenterContent.heroTitle
+ * // data.getCSCenterContent.quickAccessCards
+ * // data.getCSCenterContent.contactMethods
+ * // data.getCSCenterContent.faqs (sorted by order)
+ */
+
+/**
+ * UPDATE CS CENTER CONTENT - Frontend Usage:
+ * 
+ * const [updateContent, { data, loading }] = useMutation(UPDATE_CS_CENTER_CONTENT, {
+ *   refetchQueries: [{ query: GET_CS_CENTER_CONTENT }]
+ * });
+ * 
+ * await updateContent({
+ *   variables: {
+ *     input: {
+ *       heroTitle: "Customer Support Center",
+ *       heroDescription: "Get help, find answers, and manage your B2B experience.",
+ *       heroImage: "https://example.com/image.jpg",
+ *       quickAccessCards: [
+ *         {
+ *           title: "Get Support",
+ *           description: "Contact our support team",
+ *           icon: "support_agent",
+ *           link: "/support",
+ *           color: "indigo"
+ *         },
+ *         {
+ *           title: "Browse Articles",
+ *           description: "Read helpful articles",
+ *           icon: "article",
+ *           link: "/articles",
+ *           color: "emerald"
+ *         },
+ *         {
+ *           title: "Community Forum",
+ *           description: "Join discussions",
+ *           icon: "forum",
+ *           link: "/forum",
+ *           color: "amber"
+ *         }
+ *       ],
+ *       contactMethods: [
+ *         {
+ *           type: "email",
+ *           label: "Email",
+ *           value: "support@example.com",
+ *           availability: "Response within 24 hours",
+ *           icon: "email"
+ *         },
+ *         {
+ *           type: "phone",
+ *           label: "Phone",
+ *           value: "+1-555-0123",
+ *           availability: "Mon-Fri, 9AM-6PM EST",
+ *           icon: "phone"
+ *         },
+ *         {
+ *           type: "chat",
+ *           label: "Live Chat",
+ *           value: "Available now",
+ *           availability: "24/7",
+ *           icon: "chat"
+ *         },
+ *         {
+ *           type: "schedule",
+ *           label: "Schedule Call",
+ *           value: "Book a call",
+ *           availability: "Mon-Fri, 9AM-6PM EST",
+ *           icon: "schedule"
+ *         }
+ *       ]
+ *     }
+ *   },
+ *   context: {
+ *     headers: {
+ *       authorization: `Bearer ${token}`
+ *     }
+ *   }
+ * });
+ */
+
+/**
+ * CREATE CS FAQ - Frontend Usage:
+ * 
+ * const [createFAQ, { data }] = useMutation(CREATE_CS_FAQ, {
+ *   refetchQueries: [{ query: GET_CS_CENTER_CONTENT }]
+ * });
+ * 
+ * await createFAQ({
+ *   variables: {
+ *     input: {
+ *       question: "How do I create a service request?",
+ *       answer: "You can create a service request by navigating to the Service Requests section and clicking the 'Create Request' button.",
+ *       category: "getting-started",  // Options: general, getting-started, service-requests, quotes, payments, account
+ *       order: 1
+ *     }
+ *   },
+ *   context: {
+ *     headers: {
+ *       authorization: `Bearer ${token}`
+ *     }
+ *   }
+ * });
+ */
+
+/**
+ * UPDATE CS FAQ - Frontend Usage:
+ * 
+ * const [updateFAQ, { data }] = useMutation(UPDATE_CS_FAQ, {
+ *   refetchQueries: [{ query: GET_CS_CENTER_CONTENT }]
+ * });
+ * 
+ * await updateFAQ({
+ *   variables: {
+ *     input: {
+ *       faqId: "507f1f77bcf86cd799439011",
+ *       question: "Updated question?",  // Optional
+ *       answer: "Updated answer",        // Optional
+ *       category: "general",             // Optional
+ *       order: 2                         // Optional
+ *     }
+ *   },
+ *   context: {
+ *     headers: {
+ *       authorization: `Bearer ${token}`
+ *     }
+ *   }
+ * });
+ */
+
+/**
+ * DELETE CS FAQ - Frontend Usage:
+ * 
+ * const [deleteFAQ, { data }] = useMutation(DELETE_CS_FAQ, {
+ *   refetchQueries: [{ query: GET_CS_CENTER_CONTENT }]
+ * });
+ * 
+ * await deleteFAQ({
+ *   variables: {
+ *     faqId: "507f1f77bcf86cd799439011"
+ *   },
+ *   context: {
+ *     headers: {
+ *       authorization: `Bearer ${token}`
+ *     }
+ *   }
+ * });
  */

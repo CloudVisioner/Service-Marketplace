@@ -1,0 +1,36 @@
+services:
+  nestar-api:
+    container_name: b2b-api
+    restart: always
+    image: node:25.4.0
+    env_file:
+      - .env
+    ports:
+      - "4001:3010"
+    volumes:
+      - ./:/usr/src/b2b
+      - /usr/src/b2b/node_modules
+    working_dir: /usr/src/b2b
+    networks:
+      - monorepo-network
+    command: bash -c "npm install && npm run build nestar-api && npm run start:prod nestar-api"
+
+  b2b-batch:
+    container_name: b2b-batch
+    restart: unless-stopped
+    image: node:25.4.0
+    env_file:
+      - .env
+    ports:
+      - "4002:3008"
+    volumes:
+      - ./:/usr/src/b2b
+      - /usr/src/b2b/node_modules
+    working_dir: /usr/src/b2b
+    networks:
+      - monorepo-network
+    command: bash -c "npm install && npm run build nestar-batch && npm run start:dev:batch"
+
+networks:
+  monorepo-network:
+    driver: bridge
