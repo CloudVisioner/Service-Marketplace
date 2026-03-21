@@ -43,7 +43,7 @@
 		"class-validator": "^0.14.0",
 		"graphql": "^16.8.1",
 		"graphql-upload": "^13.0.0",
-		"@google/generative-ai": "^0.23.0",
+		
 		"jsonwebtoken": "^9.0.3",
 		"moment": "^2.29.4",
 		"mongoose": "^8.0.0",
