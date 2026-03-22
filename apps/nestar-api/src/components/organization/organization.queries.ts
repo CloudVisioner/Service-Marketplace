@@ -24,13 +24,16 @@ export const CREATE_BUYER_ORGANIZATION = gql`
   mutation CreateOrUpdateBuyerOrganization($input: BuyerOrganizationInput!) {
     createOrUpdateBuyerOrganization(input: $input) {
       _id
-      orgType
+      organizationType
+      organizationStatus
       orgOwnerUserId
       organizationName
       organizationIndustry
       organizationLocation
+      organizationCountry
       organizationDescription
       budgetRange
+      organizationImage
       createdAt
       updatedAt
     }
@@ -46,14 +49,16 @@ export const GET_BUYER_ORGANIZATION = gql`
   query GetBuyerOrganization {
     getBuyerOrganization {
       _id
-      orgType
-      orgStatus
+      organizationType
+      organizationStatus
       orgOwnerUserId
       organizationName
       organizationIndustry
       organizationLocation
+      organizationCountry
       organizationDescription
       budgetRange
+      organizationImage
       createdAt
       updatedAt
     }

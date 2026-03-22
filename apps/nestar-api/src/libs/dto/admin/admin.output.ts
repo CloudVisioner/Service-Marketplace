@@ -493,52 +493,6 @@ export class CSCenterContent {
 }
 
 // ============================================================================
-// ADMIN PROFILE OUTPUTS
-// ============================================================================
-
-@ObjectType()
-export class AdminProfile {
-	@Field(() => String)
-	_id: mongoose.ObjectId;
-
-	@Field(() => String)
-	userNick: string;
-
-	@Field(() => String)
-	userEmail: string;
-
-	@Field(() => String, { nullable: true })
-	userPhone?: string;
-
-	@Field(() => String, { nullable: true })
-	userDescription?: string;
-
-	@Field(() => String, { nullable: true })
-	userImage?: string;
-
-	@Field(() => UserRole)
-	userRole: UserRole;
-
-	@Field(() => UserStatus)
-	userStatus: UserStatus;
-
-	@Field(() => Date)
-	createdAt: Date;
-
-	@Field(() => Date)
-	updatedAt: Date;
-}
-
-@ObjectType()
-export class UploadAdminProfileImageResponse {
-	@Field(() => String)
-	imageUrl: string;
-
-	@Field(() => Boolean)
-	success: boolean;
-}
-
-// ============================================================================
 // DASHBOARD STATISTICS OUTPUTS
 // ============================================================================
 

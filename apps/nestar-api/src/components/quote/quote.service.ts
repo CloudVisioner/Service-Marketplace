@@ -97,6 +97,9 @@ export class QuoteService {
 				$inc: { reqTotalQuotes: 1 },
 			});
 
+			// Denormalized counter on user (provider) — kept in sync for admin/raw DB views
+			await this.userModel.findByIdAndUpdate(userId, { $inc: { userTotalQuotes: 1 } }).exec();
+
 			// Create notification for buyer - QUOTE_SENT
 			await this.notificationService.createNotification({
 				type: NotificationType.QUOTE_SENT,
@@ -406,6 +409,11 @@ export class QuoteService {
 		await this.serviceRequestModel.findByIdAndUpdate(quote.quoteServiceReqId, {
 			$inc: { reqTotalQuotes: -1 },
 		});
+
+		await this.userModel.updateOne(
+			{ _id: quote.quoteCreatedByUserId, userTotalQuotes: { $gt: 0 } },
+			{ $inc: { userTotalQuotes: -1 } },
+		).exec();
 
 		return result;
 	}

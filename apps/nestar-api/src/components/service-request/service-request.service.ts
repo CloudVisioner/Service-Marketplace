@@ -1062,7 +1062,14 @@ export class ServiceRequestService {
 	 */
 	public async deleteServiceRequestForAdmin(requestId: string): Promise<boolean> {
 		const requestIdObj = shapeIntoMongoObjectId(requestId);
-		const result = await this.serviceRequestModel.findByIdAndDelete(requestIdObj).exec();
-		return !!result;
+		const doc = await this.serviceRequestModel.findById(requestIdObj).exec();
+		if (!doc) {
+			return false;
+		}
+		await this.serviceRequestModel.findByIdAndDelete(requestIdObj).exec();
+		await this.userModel
+			.updateOne({ _id: doc.reqCreatedByUserId, userTotalServiceRequests: { $gt: 0 } }, { $inc: { userTotalServiceRequests: -1 } })
+			.exec();
+		return true;
 	}
 }

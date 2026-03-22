@@ -34,6 +34,26 @@ export class OrganizationService {
 		return org?.orgType as OrganizationType | undefined;
 	}
 
+	/** Drop Mongo operator keys so we never produce `{ field: x, $set: { field: x } }`-style updates. */
+	private stripMongoOperatorKeys(obj: Record<string, unknown>): Record<string, unknown> {
+		const out: Record<string, unknown> = {};
+		for (const key of Object.keys(obj)) {
+			if (!key.startsWith('$')) {
+				out[key] = obj[key];
+			}
+		}
+		return out;
+	}
+
+	/** Same field must not appear in both $set and $unset (Mongo path conflict). */
+	private unsetWithoutSetOverlap(
+		setDoc: Record<string, unknown>,
+		unsetDoc: Record<string, string>,
+	): Record<string, string> {
+		const setKeys = new Set(Object.keys(setDoc));
+		return Object.fromEntries(Object.entries(unsetDoc).filter(([k]) => !setKeys.has(k)));
+	}
+
 	/**
 	 * Normalizes all array fields on an organization document.
 	 * Ensures every field that GraphQL declares as [Type] is always a proper array,
@@ -136,6 +156,18 @@ export class OrganizationService {
 		// Also set orgCountry alias for backward compatibility
 		if (org.organizationCountry !== undefined && org.orgCountry === undefined) {
 			org.orgCountry = org.organizationCountry;
+		}
+
+		// Buyer "Location" field: keep organizationLocation and organizationCountry in sync for clients that only send/read one
+		const loc = org.organizationLocation;
+		const ctry = org.organizationCountry;
+		const locEmpty = loc === undefined || loc === null || String(loc).trim() === '';
+		const ctryEmpty = ctry === undefined || ctry === null || String(ctry).trim() === '';
+		if (locEmpty && !ctryEmpty) {
+			org.organizationLocation = String(ctry).trim();
+		}
+		if (ctryEmpty && !locEmpty) {
+			org.organizationCountry = String(loc).trim();
 		}
 
 		// Ensure required non-nullable fields have values (for old records)
@@ -499,8 +531,10 @@ export class OrganizationService {
 			}
 		}
 
+		const cleanedUpdate = this.stripMongoOperatorKeys(updateData as Record<string, unknown>);
+
 		const result = await this.organizationModel
-			.findByIdAndUpdate(orgIdObj, updateData, {
+			.findByIdAndUpdate(orgIdObj, cleanedUpdate, {
 				new: true,
 			})
 			.exec();
@@ -817,6 +851,12 @@ export class OrganizationService {
 			throw new BadRequestException('Only BUYER users can use this endpoint.');
 		}
 
+		const trimStr = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+		const hasBuyerLocation =
+			cleanInput.organizationLocation !== undefined && trimStr(cleanInput.organizationLocation) !== '';
+		const hasBuyerCountry =
+			cleanInput.organizationCountry !== undefined && trimStr(cleanInput.organizationCountry) !== '';
+
 		// Fields to explicitly unset for buyer organizations (provider-specific fields)
 		// These fields should NOT exist in buyer organizations
 		const fieldsToUnset = [
@@ -827,7 +867,7 @@ export class OrganizationService {
 			'orgAverageRating',
 			'orgTotalLikes',
 			'orgTotalViews',
-			'organizationImage',
+			// organizationImage: do not unset — buyer orgs persist a logo URL; $unset + $set caused Mongo path conflicts
 			'categoryId',
 			'subCategory',
 			'organizationHourlyRate',
@@ -840,7 +880,7 @@ export class OrganizationService {
 			'organizationWebsiteUrl',
 			'organizationEmail',
 			'organizationPhoneNumber',
-			'orgCountry',
+			// orgCountry: do not unset — buyers may set organizationCountry / orgCountry
 			'orgCity',
 			'orgTaxId',
 			'serviceTitle',
@@ -862,7 +902,16 @@ export class OrganizationService {
 			const updateData: any = {};
 			if (cleanInput.organizationName) updateData.organizationName = cleanInput.organizationName;
 			if (cleanInput.organizationIndustry !== undefined) updateData.organizationIndustry = cleanInput.organizationIndustry;
-			if (cleanInput.organizationLocation !== undefined) updateData.organizationLocation = cleanInput.organizationLocation;
+			if (cleanInput.organizationLocation !== undefined) {
+				updateData.organizationLocation = cleanInput.organizationLocation;
+			}
+			if (cleanInput.organizationCountry !== undefined) {
+				updateData.orgCountry = cleanInput.organizationCountry;
+				// If the client only sends organizationCountry, keep a single location line in sync
+				if (cleanInput.organizationLocation === undefined) {
+					updateData.organizationLocation = cleanInput.organizationCountry;
+				}
+			}
 			if (cleanInput.organizationDescription !== undefined) updateData.organizationDescription = cleanInput.organizationDescription;
 			if (cleanInput.budgetRange !== undefined) updateData.budgetRange = cleanInput.budgetRange;
 			if (cleanInput.organizationImage !== undefined) updateData.organizationImage = cleanInput.organizationImage || null; // Save organizationImage as string
@@ -880,15 +929,22 @@ export class OrganizationService {
 			// Always update updatedAt timestamp
 			updateData.updatedAt = new Date();
 
-			// Build unset object
+			// Build unset object — never $unset a path we also $set (e.g. organizationImage)
 			const unsetData = fieldsToUnset.reduce((acc, field) => ({ ...acc, [field]: '' }), {});
+			const unsetFiltered = this.unsetWithoutSetOverlap(updateData as Record<string, unknown>, unsetData);
+
+			const setPayload = this.stripMongoOperatorKeys(updateData as Record<string, unknown>) as Record<
+				string,
+				unknown
+			>;
+
+			const updateOp: Record<string, unknown> = { $set: setPayload };
+			if (Object.keys(unsetFiltered).length > 0) {
+				updateOp.$unset = unsetFiltered;
+			}
 
 			const result = await this.organizationModel
-				.findByIdAndUpdate(
-					existingOrg._id,
-					{ $set: updateData, $unset: unsetData },
-					{ new: true }
-				)
+				.findByIdAndUpdate(existingOrg._id, updateOp, { new: true })
 				.exec();
 
 			if (!result) {
@@ -899,6 +955,10 @@ export class OrganizationService {
 		} else {
 			// CREATE new buyer organization
 
+			if (!hasBuyerLocation && !hasBuyerCountry) {
+				throw new BadRequestException('Provide organizationLocation or organizationCountry.');
+			}
+
 			// Check for unique name
 			const nameConflict = await this.organizationModel.findOne({ organizationName: cleanInput.organizationName }).exec();
 			if (nameConflict) {
@@ -907,20 +967,35 @@ export class OrganizationService {
 
 			// No website URL check needed for buyers (not a buyer field)
 
+			let organizationLocation = '';
+			let orgCountry: string | undefined;
+			if (hasBuyerLocation && hasBuyerCountry) {
+				organizationLocation = trimStr(cleanInput.organizationLocation);
+				orgCountry = trimStr(cleanInput.organizationCountry);
+			} else if (hasBuyerLocation) {
+				organizationLocation = trimStr(cleanInput.organizationLocation);
+			} else {
+				organizationLocation = trimStr(cleanInput.organizationCountry);
+				orgCountry = trimStr(cleanInput.organizationCountry);
+			}
+
 			// Clean buyer organization data - only essential fields
 			// Structured in proper order: _id, orgType, orgOwnerUserId, organization fields, budgetRange, timestamps
-			const orgData = {
+			const orgData: Record<string, unknown> = {
 				orgType: 'BUYER',
 				orgStatus: OrganizationStatus.ACTIVE,
 				orgOwnerUserId: userIdObj,
 				organizationName: cleanInput.organizationName,
 				organizationIndustry: cleanInput.organizationIndustry,
-				organizationLocation: cleanInput.organizationLocation,
+				organizationLocation,
 				organizationDescription: cleanInput.organizationDescription,
 				budgetRange: cleanInput.budgetRange || undefined,
 				organizationImage: cleanInput.organizationImage || null, // Save organizationImage as string
 				// createdAt and updatedAt will be added automatically by Mongoose timestamps
 			};
+			if (orgCountry !== undefined) {
+				orgData.orgCountry = orgCountry;
+			}
 
 			try {
 				const result = await this.organizationModel.create(orgData);
@@ -1255,13 +1330,15 @@ export class OrganizationService {
 				updateData.budgetRange = input.budgetRange;
 			}
 
+			const cleanedProviderUpdate = this.stripMongoOperatorKeys(updateData as Record<string, unknown>);
+
 			// If no fields to update, return the existing organization
-			if (Object.keys(updateData).length === 0) {
+			if (Object.keys(cleanedProviderUpdate).length === 0) {
 				return this.normalizeOrganizationFields(org.toObject());
 			}
 
 			const updatedOrg = await this.organizationModel
-				.findByIdAndUpdate(orgIdObj, updateData, { new: true })
+				.findByIdAndUpdate(orgIdObj, cleanedProviderUpdate, { new: true })
 				.exec();
 
 			if (!updatedOrg) {

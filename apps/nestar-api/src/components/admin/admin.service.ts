@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { GetAllUsersResponse, GetAllOrganizationsResponse, AdminOrganization, DashboardStatistics, StatisticTrend, GetAllAdminsResponse, AdminUser, InviteAdminResponse, AdminProfile, UploadAdminProfileImageResponse } from '../../libs/dto/admin/admin.output';
-import { GetAllUsersInput, GetAllOrganizationsInput, RejectOrganizationInput, UpdateOrganizationInput, GetAllAdminsInput, InviteAdminInput, UpdateAdminProfileInput, UploadAdminProfileImageInput } from '../../libs/dto/admin/admin.input';
+import { GetAllUsersResponse, GetAllOrganizationsResponse, AdminOrganization, DashboardStatistics, StatisticTrend, GetAllAdminsResponse, AdminUser, InviteAdminResponse } from '../../libs/dto/admin/admin.output';
+import { GetAllUsersInput, GetAllOrganizationsInput, RejectOrganizationInput, UpdateOrganizationInput, GetAllAdminsInput, InviteAdminInput } from '../../libs/dto/admin/admin.input';
 import { User, Users } from '../../libs/dto/user/user';
 import { Organization } from '../../libs/dto/organization/organization';
 import { UserStatus, UserRole } from '../../libs/enums/user.enum';
@@ -70,6 +70,44 @@ export class AdminService {
 						list: [
 							{ $skip: (input.page - 1) * input.limit },
 							{ $limit: input.limit },
+							{
+								$lookup: {
+									from: 'serviceRequests',
+									localField: '_id',
+									foreignField: 'reqCreatedByUserId',
+									as: 'serviceRequests',
+								},
+							},
+							{
+								$lookup: {
+									from: 'quotes',
+									localField: '_id',
+									foreignField: 'quoteCreatedByUserId',
+									as: 'quotes',
+								},
+							},
+							{
+								$lookup: {
+									from: 'organizations',
+									localField: '_id',
+									foreignField: 'orgOwnerUserId',
+									as: 'organizations',
+								},
+							},
+							{
+								$addFields: {
+									userTotalServiceRequests: { $size: { $ifNull: ['$serviceRequests', []] } },
+									userTotalQuotes: { $size: { $ifNull: ['$quotes', []] } },
+									userOrgCount: { $size: { $ifNull: ['$organizations', []] } },
+								},
+							},
+							{
+								$project: {
+									serviceRequests: 0,
+									quotes: 0,
+									organizations: 0,
+								},
+							},
 						],
 						metaCounter: [{ $count: 'total' }],
 					},
@@ -95,7 +133,19 @@ export class AdminService {
 			throw new NotFoundException('User not found.');
 		}
 
-		return user;
+		const [serviceRequestCount, quoteCount, orgCount] = await Promise.all([
+			this.serviceRequestModel.countDocuments({ reqCreatedByUserId: userIdObj }).exec(),
+			this.quoteModel.countDocuments({ quoteCreatedByUserId: userIdObj }).exec(),
+			this.organizationModel.countDocuments({ orgOwnerUserId: userIdObj }).exec(),
+		]);
+
+		const plain = typeof (user as any).toObject === 'function' ? (user as any).toObject() : { ...user };
+		return {
+			...plain,
+			userTotalServiceRequests: serviceRequestCount,
+			userTotalQuotes: quoteCount,
+			userOrgCount: orgCount,
+		} as User;
 	}
 
 	/**
@@ -707,117 +757,6 @@ export class AdminService {
 			},
 			recentServiceRequests: recentServiceRequests as any,
 			recentOrders: recentOrders as any,
-		};
-	}
-
-	// ============================================================================
-	// ADMIN PROFILE MANAGEMENT
-	// ============================================================================
-
-	/**
-	 * Get current admin profile
-	 */
-	public async getMyAdminProfile(adminId: ObjectId): Promise<AdminProfile> {
-		const user = await this.userModel.findById(adminId).exec();
-
-		if (!user) {
-			throw new NotFoundException('Admin profile not found.');
-		}
-
-		// Verify user is an admin
-		const adminRoles = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CONTENT_ADMIN];
-		if (!adminRoles.includes(user.userRole as UserRole)) {
-			throw new BadRequestException('User is not an admin.');
-		}
-
-		return {
-			_id: user._id,
-			userNick: user.userNick,
-			userEmail: user.userEmail,
-			userPhone: user.userPhone,
-			userDescription: user.userDescription,
-			userImage: user.userImage,
-			userRole: user.userRole as UserRole,
-			userStatus: user.userStatus as UserStatus,
-			createdAt: user.createdAt,
-			updatedAt: user.updatedAt,
-		} as AdminProfile;
-	}
-
-	/**
-	 * Update admin profile
-	 */
-	public async updateAdminProfile(input: UpdateAdminProfileInput, adminId: ObjectId): Promise<AdminProfile> {
-		const user = await this.userModel.findById(adminId).exec();
-
-		if (!user) {
-			throw new NotFoundException('Admin profile not found.');
-		}
-
-		const updateData: any = {};
-
-		if (input.userNick !== undefined) {
-			updateData.userNick = input.userNick;
-		}
-		if (input.userPhone !== undefined) {
-			updateData.userPhone = input.userPhone;
-		}
-		if (input.userDescription !== undefined) {
-			updateData.userDescription = input.userDescription;
-		}
-		if (input.userImage !== undefined) {
-			updateData.userImage = input.userImage;
-		}
-
-		const result = await this.userModel.findByIdAndUpdate(
-			adminId,
-			updateData,
-			{ new: true },
-		).exec();
-
-		if (!result) {
-			throw new InternalServerErrorException(Message.UPDATE_FAILED);
-		}
-
-		return {
-			_id: result._id,
-			userNick: result.userNick,
-			userEmail: result.userEmail,
-			userPhone: result.userPhone,
-			userDescription: result.userDescription,
-			userImage: result.userImage,
-			userRole: result.userRole as UserRole,
-			userStatus: result.userStatus as UserStatus,
-			createdAt: result.createdAt,
-			updatedAt: result.updatedAt,
-		} as AdminProfile;
-	}
-
-	/**
-	 * Upload admin profile image
-	 */
-	public async uploadAdminProfileImage(input: UploadAdminProfileImageInput, adminId: ObjectId): Promise<UploadAdminProfileImageResponse> {
-		// TODO: Implement actual image upload to cloud storage (S3, Cloudinary, etc.)
-		// For now, if base64 is provided, we'll just return it as the URL
-		// In production, you should:
-		// 1. Validate image format (JPEG, PNG, WebP)
-		// 2. Validate image size (max 5MB)
-		// 3. Upload to cloud storage
-		// 4. Get public URL
-		// 5. Update user's userImage field
-
-		const imageUrl = input.image; // In production, this would be the cloud storage URL
-
-		// Update user's image
-		await this.userModel.findByIdAndUpdate(
-			adminId,
-			{ userImage: imageUrl },
-			{ new: true },
-		).exec();
-
-		return {
-			imageUrl,
-			success: true,
 		};
 	}
 }

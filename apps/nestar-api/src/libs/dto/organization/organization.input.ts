@@ -90,9 +90,15 @@ export class BuyerOrganizationInput {
 	@Field(() => String)
 	organizationIndustry: string;
 
-	@IsNotEmpty()
-	@Field(() => String)
-	organizationLocation: string;
+	/** GraphQL: nullable. Send at least one of organizationLocation / organizationCountry on create (validated in service). */
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationLocation?: string;
+
+	/** GraphQL: nullable. Can mirror organizationLocation for a single "Location" UI field. */
+	@IsOptional()
+	@Field(() => String, { nullable: true })
+	organizationCountry?: string;
 
 	@IsNotEmpty()
 	@MaxLength(2000)

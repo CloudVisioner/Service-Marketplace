@@ -1,5 +1,5 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, Length, IsEmail } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, Length, IsEmail } from 'class-validator';
 import { UserStatus, UserRole, UserAuthType } from '../../enums/user.enum';
 import { ObjectId } from 'mongoose';
 
@@ -31,7 +31,7 @@ export class UserUpdate {
 	userPhone?: string;
 
 	@IsOptional()
-	@Length(3, 12)
+	@IsString()
 	@Field(() => String, { nullable: true })
 	userNick?: string;
 
@@ -41,14 +41,12 @@ export class UserUpdate {
 	userPassword?: string;
 
 	@IsOptional()
-	@Length(3, 100)
-	@Field(() => String, { nullable: true })
-
-	@IsOptional()
+	@IsString()
 	@Field(() => String, { nullable: true })
 	userImage?: string;
 
 	@IsOptional()
+	@IsString()
 	@Field(() => String, { nullable: true })
 	userDescription?: string;
 

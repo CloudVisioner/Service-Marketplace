@@ -1,5 +1,5 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsIn, IsNotEmpty, IsOptional, Length, Min, IsEmail } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, Length, Min, IsEmail } from 'class-validator';
 import { UserRole, UserStatus, UserAuthType } from '../../enums/user.enum';
 import { availableUserSorts } from '../../config';
 import { Direction } from '../../enums/common.enum';
@@ -42,7 +42,7 @@ export class UserInput {
 	userEmail: string;
 
 	@IsOptional()
-	@Length(3, 12)
+	@IsString()
 	@Field(() => String, { nullable: true })
 	userNick?: string;
 
@@ -63,6 +63,7 @@ export class UserInput {
 	userImage?: string;
 
 	@IsOptional()
+	@IsString()
 	@Field(() => String, { nullable: true })
 	userDescription?: string;
 
@@ -153,10 +154,12 @@ export class ChangePasswordInput {
 @InputType()
 export class UpdateProviderProfileInput {
 	@IsOptional()
+	@IsString()
 	@Field(() => String, { nullable: true })
 	providerFullName?: string; // Maps to userDescription or new field
 
 	@IsOptional()
+	@IsString()
 	@Field(() => String, { nullable: true })
 	providerDisplayName?: string; // Maps to userNick
 
@@ -166,6 +169,7 @@ export class UpdateProviderProfileInput {
 	providerEmail?: string; // Maps to userEmail
 
 	@IsOptional()
+	@IsString()
 	@Field(() => String, { nullable: true })
 	providerPhone?: string; // Maps to userPhone
 }

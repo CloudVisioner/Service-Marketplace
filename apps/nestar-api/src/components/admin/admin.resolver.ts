@@ -44,8 +44,6 @@ import {
 	UpdateCSFAQInput,
 	AdminLoginInput,
 	AdminSignupInput,
-	UpdateAdminProfileInput,
-	UploadAdminProfileImageInput,
 } from '../../libs/dto/admin/admin.input';
 import {
 	GetAllUsersResponse,
@@ -67,8 +65,6 @@ import {
 	DashboardStatistics,
 	AdminLoginResponse,
 	SuccessResponse,
-	AdminProfile,
-	UploadAdminProfileImageResponse,
 } from '../../libs/dto/admin/admin.output';
 import { User } from '../../libs/dto/user/user';
 import { ServiceRequest } from '../../libs/dto/service-request/service-request';
@@ -650,36 +646,5 @@ export class AdminResolver {
 	): Promise<CSFAQ> {
 		console.log('Mutation: deleteCSFAQ');
 		return await this.customerSupportService.deleteCSFAQ(faqId);
-	}
-
-	// ============================================================================
-	// ADMIN PROFILE MANAGEMENT
-	// ============================================================================
-
-	@UseGuards(AuthGuard, AdminGuard)
-	@Query(() => AdminProfile)
-	public async getMyAdminProfile(@AuthUser('_id') adminId: ObjectId): Promise<AdminProfile> {
-		console.log('Query: getMyAdminProfile');
-		return await this.adminService.getMyAdminProfile(adminId);
-	}
-
-	@UseGuards(AuthGuard, AdminGuard)
-	@Mutation(() => AdminProfile)
-	public async updateAdminProfile(
-		@Args('input', { type: () => UpdateAdminProfileInput }) input: UpdateAdminProfileInput,
-		@AuthUser('_id') adminId: ObjectId,
-	): Promise<AdminProfile> {
-		console.log('Mutation: updateAdminProfile');
-		return await this.adminService.updateAdminProfile(input, adminId);
-	}
-
-	@UseGuards(AuthGuard, AdminGuard)
-	@Mutation(() => UploadAdminProfileImageResponse)
-	public async uploadAdminProfileImage(
-		@Args('input', { type: () => UploadAdminProfileImageInput }) input: UploadAdminProfileImageInput,
-		@AuthUser('_id') adminId: ObjectId,
-	): Promise<UploadAdminProfileImageResponse> {
-		console.log('Mutation: uploadAdminProfileImage');
-		return await this.adminService.uploadAdminProfileImage(input, adminId);
 	}
 }

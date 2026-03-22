@@ -884,36 +884,3 @@ export class AdminSignupInput {
 	@Field(() => String)
 	password: string;
 }
-
-// ============================================================================
-// ADMIN PROFILE MANAGEMENT INPUTS
-// ============================================================================
-
-@InputType()
-export class UpdateAdminProfileInput {
-	@IsOptional()
-	@Min(2)
-	@Max(50)
-	@Field(() => String, { nullable: true })
-	userNick?: string;
-
-	@IsOptional()
-	@Field(() => String, { nullable: true })
-	userPhone?: string;
-
-	@IsOptional()
-	@Max(500)
-	@Field(() => String, { nullable: true })
-	userDescription?: string;
-
-	@IsOptional()
-	@Field(() => String, { nullable: true })
-	userImage?: string;
-}
-
-@InputType()
-export class UploadAdminProfileImageInput {
-	@IsNotEmpty()
-	@Field(() => String)
-	image: string; // Base64 string
-}
