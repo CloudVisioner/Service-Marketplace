@@ -1,12 +1,12 @@
 import { registerEnumType } from '@nestjs/graphql';
 
 export enum ServiceRequestStatus {
-	DRAFT = 'DRAFT',        // Editing/private
-	OPEN = 'OPEN',          // Published ✓ Quotes ✓ Editable
-	ACTIVE = 'ACTIVE',      // Quote accepted → Work
-	COMPLETED = 'COMPLETED', // Delivered
-	CLOSED = 'CLOSED',      // Done/paid
-	CANCELLED = 'CANCELLED', // Killed
+	DRAFT = 'DRAFT',
+	OPEN = 'OPEN',
+	ACTIVE = 'ACTIVE',
+	COMPLETED = 'COMPLETED',
+	CLOSED = 'CLOSED',
+	CANCELLED = 'CANCELLED',
 }
 registerEnumType(ServiceRequestStatus, {
 	name: 'ServiceRequestStatus',

@@ -11,19 +11,16 @@ export class AuthGuard implements CanActivate {
 
 		const contextType = context.getType();
 
-		// Support both GraphQL and HTTP endpoints
 		let request: any;
 		if (contextType === 'graphql') {
 			request = context.getArgByIndex(2).req;
 		} else if (contextType === 'http') {
 			request = context.switchToHttp().getRequest();
 		} else {
-			// For other transport types, skip auth by this guard
 			return true;
 		}
 
 		const bearerToken = request.headers.authorization;
-		console.log('AuthGuard - Authorization header:', bearerToken);
 
 		if (!bearerToken) {
 			throw new BadRequestException(Message.TOKEN_NOT_EXIST);
@@ -37,12 +34,9 @@ export class AuthGuard implements CanActivate {
 				throw new UnauthorizedException(Message.NOT_AUTHENTICATED);
 			}
 
-			console.log('userNick[auth] =>', authUser.userNick);
 			request.body.authUser = authUser;
-
 			return true;
 		} catch (err) {
-			console.error('Token verification failed:', err.message);
 			throw new UnauthorizedException(err.message || Message.NOT_AUTHENTICATED);
 		}
 	}

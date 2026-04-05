@@ -1,40 +1,31 @@
 import { ObjectId } from 'bson';
 import { BadRequestException } from '@nestjs/common';
-
-export const availableUserSorts = ['createdAt', 'updatedAt'];
-
-// IMAGE CONFIGURATION (config.js)
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 import { T } from './types/common';
 
+export const availableUserSorts = ['createdAt', 'updatedAt'];
+
 export const validMimeTypes = ['image/png', 'image/jpg', 'image/jpeg'];
+
 export const getSerialForImage = (filename: string) => {
 	const ext = path.parse(filename).ext;
 	return uuidv4() + ext;
 };
 
-/**
- * Validates and converts a string to MongoDB ObjectId
- * @param target - String or ObjectId to convert
- * @param fieldName - Optional field name for error message (e.g., "orgId", "userId")
- * @returns ObjectId instance
- * @throws BadRequestException if string is not a valid ObjectId format
- */
 export const shapeIntoMongoObjectId = (target: any, fieldName: string = 'ID') => {
 	if (target instanceof ObjectId) {
 		return target;
 	}
-	
+
 	if (typeof target === 'string') {
-		// Validate ObjectId format: must be exactly 24 hex characters
 		const objectIdRegex = /^[0-9a-fA-F]{24}$/;
 		if (!objectIdRegex.test(target)) {
 			throw new BadRequestException(
 				`Invalid ${fieldName} format. Expected a 24-character hexadecimal string, but received: "${target}". Please provide a valid ${fieldName}.`
 			);
 		}
-		
+
 		try {
 			return new ObjectId(target);
 		} catch (error) {
@@ -43,8 +34,7 @@ export const shapeIntoMongoObjectId = (target: any, fieldName: string = 'ID') =>
 			);
 		}
 	}
-	
-	// If it's already an ObjectId or other valid type, return as-is
+
 	return target;
 };
 
@@ -83,8 +73,9 @@ interface LookupAuthUserFollowed {
 	followerUserId: T;
 	followedOrgId: string;
 }
+
 export const lookupAuthUserFollowed = (input: LookupAuthUserFollowed) => {
-	const {followerUserId, followedOrgId} = input;
+	const { followerUserId, followedOrgId } = input;
 	return {
 		$lookup: {
 			from: 'follows',
@@ -123,5 +114,3 @@ export const lookupUser = {
 		as: 'userData',
 	},
 };
-
-

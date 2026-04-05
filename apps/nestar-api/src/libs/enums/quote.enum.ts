@@ -6,7 +6,7 @@ export enum QuoteStatus {
 	REJECTED = 'REJECTED',
 	EXPIRED = 'EXPIRED',
 	CANCELLED = 'CANCELLED',
-	DELETED = 'DELETED', // Admin: Hard deleted
+	DELETED = 'DELETED',
 }
 registerEnumType(QuoteStatus, {
 	name: 'QuoteStatus',

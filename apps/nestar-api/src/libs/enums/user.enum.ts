@@ -8,18 +8,18 @@ export enum UserRole {
 	CONTENT_ADMIN = 'CONTENT_ADMIN',
 }
 registerEnumType(UserRole, {
-    name: 'UserRole',
+	name: 'UserRole',
 })
 
 export enum UserStatus {
 	ACTIVE = 'ACTIVE',
 	SUSPENDED = 'SUSPENDED',
 	INACTIVE = 'INACTIVE',
-	BLOCK = 'BLOCK', // Legacy - use SUSPENDED instead
-	DELETE = 'DELETE', // Legacy - use INACTIVE instead
+	BLOCK = 'BLOCK',
+	DELETE = 'DELETE',
 }
 registerEnumType(UserStatus, {
-    name: 'UserStatus',
+	name: 'UserStatus',
 })
 
 export enum UserAuthType {

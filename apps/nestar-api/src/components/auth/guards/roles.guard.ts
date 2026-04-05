@@ -22,34 +22,25 @@ export class RolesGuard implements CanActivate {
 			if (!bearerToken) throw new BadRequestException(Message.TOKEN_NOT_EXIST);
 
 			const token = bearerToken.split(' ')[1];
-			
+
 			try {
 				const authUser = await this.authService.verifyUserToken(token);
-				
-				// Convert roles array to strings for comparison (handles enum values)
+
 				const roleStrings = roles.map(role => String(role));
 				const userRoleString = String(authUser.userRole);
-				
 				const hasRole = roleStrings.includes(userRoleString);
-				
-				console.log('RolesGuard - Required roles:', roleStrings);
-				console.log('RolesGuard - User role:', userRoleString);
-				console.log('RolesGuard - Has permission:', hasRole);
 
 				if (!authUser || !hasRole) {
-					console.error('Token verification failed in RolesGuard: Allowed only for members with specific roles!');
 					throw new ForbiddenException(Message.ONLY_SPECIFIC_ROLES_ALLOWED);
 				}
 
-				console.log('userNick[roles] =>', authUser.userNick);
 				request.body.authUser = authUser;
 				return true;
 			} catch (err) {
-				console.error('Token verification failed in RolesGuard:', err.message);
 				throw new UnauthorizedException(err.message || Message.NOT_AUTHENTICATED);
 			}
 		}
-	
-		// description => http, rpc, gprs and etc are ignored
+
+		// http, rpc, gprs and etc are ignored
 	}
 }

@@ -1,23 +1,5 @@
 import { gql } from 'graphql-tag';
 
-/**
- * GraphQL Queries and Mutations for Admin Dashboard
- * Ready-to-use queries for frontend GraphQL client
- * 
- * All operations require authentication with ADMIN, SUPER_ADMIN, or CONTENT_ADMIN role.
- * Some operations (admin management, platform settings) require SUPER_ADMIN role.
- * 
- * Note: Install graphql-tag if using in frontend:
- * npm install graphql-tag
- * 
- * Or use with Apollo Client:
- * import { gql } from '@apollo/client';
- */
-
-// ============================================================================
-// AUTHENTICATION
-// ============================================================================
-
 export const ADMIN_LOGIN = gql`
   mutation AdminLogin($input: AdminLoginInput!) {
     adminLogin(input: $input) {
@@ -49,10 +31,6 @@ export const ADMIN_SIGNUP = gql`
     }
   }
 `;
-
-// ============================================================================
-// USER MANAGEMENT
-// ============================================================================
 
 export const GET_ALL_USERS = gql`
   query GetAllUsers($input: GetAllUsersInput!) {
@@ -118,10 +96,6 @@ export const RESET_USER_PASSWORD = gql`
     }
   }
 `;
-
-// ============================================================================
-// ORGANIZATION MANAGEMENT
-// ============================================================================
 
 export const GET_ALL_ORGANIZATIONS = gql`
   query GetAllOrganizations($input: GetAllOrganizationsInput!) {
@@ -208,10 +182,6 @@ export const UPDATE_ORGANIZATION = gql`
   }
 `;
 
-// ============================================================================
-// SERVICE REQUEST MANAGEMENT
-// ============================================================================
-
 export const GET_ALL_SERVICE_REQUESTS = gql`
   query GetAllServiceRequests($input: GetAllServiceRequestsInput!) {
     getAllServiceRequests(input: $input) {
@@ -286,10 +256,6 @@ export const DELETE_SERVICE_REQUEST = gql`
   }
 `;
 
-// ============================================================================
-// QUOTE MANAGEMENT
-// ============================================================================
-
 export const GET_ALL_QUOTES = gql`
   query GetAllQuotes($input: GetAllQuotesInput!) {
     getAllQuotes(input: $input) {
@@ -345,10 +311,6 @@ export const HARD_DELETE_QUOTE = gql`
     }
   }
 `;
-
-// ============================================================================
-// ORDER MANAGEMENT
-// ============================================================================
 
 export const GET_ALL_ORDERS = gql`
   query GetAllOrders($input: GetAllOrdersInput!) {
@@ -414,11 +376,6 @@ export const ADD_ORDER_ADMIN_NOTES = gql`
   }
 `;
 
-// ============================================================================
-// ARTICLE MANAGEMENT
-// ============================================================================
-
-// Public query: Get all published articles (no auth required)
 export const GET_PUBLISHED_ARTICLES = gql`
   query GetPublishedArticles($input: GetAllArticlesInput!) {
     getPublishedArticles(input: $input) {
@@ -443,7 +400,6 @@ export const GET_PUBLISHED_ARTICLES = gql`
   }
 `;
 
-// Admin query: Get all articles including drafts (admin auth required)
 export const GET_ALL_ARTICLES = gql`
   query GetAllArticles($input: GetAllArticlesInput!) {
     getAllArticles(input: $input) {
@@ -573,10 +529,6 @@ export const UNPUBLISH_ARTICLE = gql`
   }
 `;
 
-// ============================================================================
-// DISPUTE MANAGEMENT
-// ============================================================================
-
 export const GET_ALL_DISPUTES = gql`
   query GetAllDisputes($input: GetAllDisputesInput!) {
     getAllDisputes(input: $input) {
@@ -653,10 +605,6 @@ export const RESOLVE_DISPUTE = gql`
   }
 `;
 
-// ============================================================================
-// AUDIT LOGS
-// ============================================================================
-
 export const GET_AUDIT_LOGS = gql`
   query GetAuditLogs($input: GetAuditLogsInput!) {
     getAuditLogs(input: $input) {
@@ -683,10 +631,6 @@ export const GET_AUDIT_LOGS = gql`
     }
   }
 `;
-
-// ============================================================================
-// ADMIN MANAGEMENT
-// ============================================================================
 
 export const GET_ALL_ADMINS = gql`
   query GetAllAdmins($input: GetAllAdminsInput) {
@@ -724,10 +668,6 @@ export const REMOVE_ADMIN = gql`
     }
   }
 `;
-
-// ============================================================================
-// DASHBOARD STATISTICS
-// ============================================================================
 
 export const GET_DASHBOARD_STATISTICS = gql`
   query GetDashboardStatistics {
@@ -779,10 +719,6 @@ export const GET_DASHBOARD_STATISTICS = gql`
   }
 `;
 
-// ============================================================================
-// PLATFORM SETTINGS
-// ============================================================================
-
 export const GET_PLATFORM_SETTINGS = gql`
   query GetPlatformSettings {
     getPlatformSettings {
@@ -812,14 +748,6 @@ export const UPDATE_PLATFORM_SETTINGS = gql`
   }
 `;
 
-// ============================================================================
-// CUSTOMER SUPPORT CENTER
-// ============================================================================
-
-/**
- * Public Query - No authentication required
- * Get CS Center content with FAQs
- */
 export const GET_CS_CENTER_CONTENT = gql`
   query GetCSCenterContent {
     getCSCenterContent {
@@ -856,10 +784,6 @@ export const GET_CS_CENTER_CONTENT = gql`
   }
 `;
 
-/**
- * Admin Mutation - Requires authentication
- * Update CS Center content (hero, cards, contact methods)
- */
 export const UPDATE_CS_CENTER_CONTENT = gql`
   mutation UpdateCSCenterContent($input: UpdateCSCenterContentInput!) {
     updateCSCenterContent(input: $input) {
@@ -896,10 +820,6 @@ export const UPDATE_CS_CENTER_CONTENT = gql`
   }
 `;
 
-/**
- * Admin Mutation - Requires authentication
- * Create a new FAQ
- */
 export const CREATE_CS_FAQ = gql`
   mutation CreateCSFAQ($input: CreateCSFAQInput!) {
     createCSFAQ(input: $input) {
@@ -914,10 +834,6 @@ export const CREATE_CS_FAQ = gql`
   }
 `;
 
-/**
- * Admin Mutation - Requires authentication
- * Update an existing FAQ
- */
 export const UPDATE_CS_FAQ = gql`
   mutation UpdateCSFAQ($input: UpdateCSFAQInput!) {
     updateCSFAQ(input: $input) {
@@ -932,10 +848,6 @@ export const UPDATE_CS_FAQ = gql`
   }
 `;
 
-/**
- * Admin Mutation - Requires authentication
- * Delete an FAQ
- */
 export const DELETE_CS_FAQ = gql`
   mutation DeleteCSFAQ($faqId: String!) {
     deleteCSFAQ(faqId: $faqId) {
@@ -949,291 +861,3 @@ export const DELETE_CS_FAQ = gql`
     }
   }
 `;
-
-// ============================================================================
-// FRONTEND USAGE EXAMPLES
-// ============================================================================
-
-/**
- * ADMIN LOGIN - Frontend Usage:
- * 
- * const [adminLogin, { data, loading, error }] = useMutation(ADMIN_LOGIN);
- * 
- * await adminLogin({
- *   variables: {
- *     input: {
- *       userEmail: "admin@example.com",
- *       password: "password123"
- *     }
- *   }
- * });
- * 
- * // Store token: localStorage.setItem('adminToken', data.adminLogin.token);
- */
-
-/**
- * GET ALL USERS - Frontend Usage:
- * 
- * const { data, loading, error } = useQuery(GET_ALL_USERS, {
- *   variables: {
- *     input: {
- *       page: 1,
- *       limit: 20,
- *       search: {
- *         userRole: "BUYER",        // Optional
- *         userStatus: "ACTIVE",     // Optional
- *         userNick: "john",         // Optional - search by nickname
- *         userEmail: "john@",       // Optional - search by email
- *         createdAtFrom: "2024-01-01T00:00:00Z",  // Optional
- *         createdAtTo: "2024-12-31T23:59:59Z"     // Optional
- *       }
- *     }
- *   },
- *   context: {
- *     headers: {
- *       authorization: `Bearer ${token}`
- *     }
- *   }
- * });
- */
-
-/**
- * SUSPEND USER - Frontend Usage:
- * 
- * const [suspendUser, { data }] = useMutation(SUSPEND_USER);
- * 
- * await suspendUser({
- *   variables: {
- *     userId: "69970318229d239324d2afaa"
- *   },
- *   context: {
- *     headers: {
- *       authorization: `Bearer ${token}`
- *     }
- *   }
- * });
- */
-
-/**
- * GET ALL ARTICLES - Frontend Usage:
- * 
- * const { data } = useQuery(GET_ALL_ARTICLES, {
- *   variables: {
- *     input: {
- *       page: 1,
- *       limit: 20,
- *       search: {
- *         status: "PUBLISHED",      // Optional: DRAFT, PUBLISHED, ARCHIVED
- *         title: "guide",           // Optional - search by title
- *         tags: ["tutorial"],       // Optional - filter by tags
- *         createdAtFrom: "2024-01-01T00:00:00Z",
- *         createdAtTo: "2024-12-31T23:59:59Z"
- *       }
- *     }
- *   },
- *   context: {
- *     headers: {
- *       authorization: `Bearer ${token}`
- *     }
- *   }
- * });
- */
-
-/**
- * CREATE ARTICLE - Frontend Usage:
- * 
- * const [createArticle, { data }] = useMutation(CREATE_ARTICLE);
- * 
- * await createArticle({
- *   variables: {
- *     input: {
- *       title: "Getting Started Guide",
- *       slug: "getting-started-guide",  // Auto-generated if not provided
- *       shortDescription: "Learn how to get started...",
- *       body: "<p>HTML content from Tiptap editor</p>",
- *       thumbnail: "https://example.com/image.jpg",
- *       tags: ["tutorial", "guide"],
- *       status: "DRAFT",  // or "PUBLISHED"
- *       publishedAt: "2024-01-15T10:00:00Z"  // Optional, auto-set if PUBLISHED
- *     }
- *   },
- *   context: {
- *     headers: {
- *       authorization: `Bearer ${token}`
- *     }
- *   }
- * });
- */
-
-/**
- * GET DASHBOARD STATISTICS - Frontend Usage:
- * 
- * const { data, loading } = useQuery(GET_DASHBOARD_STATISTICS, {
- *   context: {
- *     headers: {
- *       authorization: `Bearer ${token}`
- *     }
- *   },
- *   pollInterval: 30000  // Refresh every 30 seconds
- * });
- * 
- * // Access data:
- * // data.getDashboardStatistics.totalBuyers.current
- * // data.getDashboardStatistics.totalBuyers.change (percentage)
- */
-
-/**
- * GET CS CENTER CONTENT - Frontend Usage (Public - No auth required):
- * 
- * const { data, loading, error } = useQuery(GET_CS_CENTER_CONTENT);
- * 
- * // Access data:
- * // data.getCSCenterContent.heroTitle
- * // data.getCSCenterContent.quickAccessCards
- * // data.getCSCenterContent.contactMethods
- * // data.getCSCenterContent.faqs (sorted by order)
- */
-
-/**
- * UPDATE CS CENTER CONTENT - Frontend Usage:
- * 
- * const [updateContent, { data, loading }] = useMutation(UPDATE_CS_CENTER_CONTENT, {
- *   refetchQueries: [{ query: GET_CS_CENTER_CONTENT }]
- * });
- * 
- * await updateContent({
- *   variables: {
- *     input: {
- *       heroTitle: "Customer Support Center",
- *       heroDescription: "Get help, find answers, and manage your B2B experience.",
- *       heroImage: "https://example.com/image.jpg",
- *       quickAccessCards: [
- *         {
- *           title: "Get Support",
- *           description: "Contact our support team",
- *           icon: "support_agent",
- *           link: "/support",
- *           color: "indigo"
- *         },
- *         {
- *           title: "Browse Articles",
- *           description: "Read helpful articles",
- *           icon: "article",
- *           link: "/articles",
- *           color: "emerald"
- *         },
- *         {
- *           title: "Community Forum",
- *           description: "Join discussions",
- *           icon: "forum",
- *           link: "/forum",
- *           color: "amber"
- *         }
- *       ],
- *       contactMethods: [
- *         {
- *           type: "email",
- *           label: "Email",
- *           value: "support@example.com",
- *           availability: "Response within 24 hours",
- *           icon: "email"
- *         },
- *         {
- *           type: "phone",
- *           label: "Phone",
- *           value: "+1-555-0123",
- *           availability: "Mon-Fri, 9AM-6PM EST",
- *           icon: "phone"
- *         },
- *         {
- *           type: "chat",
- *           label: "Live Chat",
- *           value: "Available now",
- *           availability: "24/7",
- *           icon: "chat"
- *         },
- *         {
- *           type: "schedule",
- *           label: "Schedule Call",
- *           value: "Book a call",
- *           availability: "Mon-Fri, 9AM-6PM EST",
- *           icon: "schedule"
- *         }
- *       ]
- *     }
- *   },
- *   context: {
- *     headers: {
- *       authorization: `Bearer ${token}`
- *     }
- *   }
- * });
- */
-
-/**
- * CREATE CS FAQ - Frontend Usage:
- * 
- * const [createFAQ, { data }] = useMutation(CREATE_CS_FAQ, {
- *   refetchQueries: [{ query: GET_CS_CENTER_CONTENT }]
- * });
- * 
- * await createFAQ({
- *   variables: {
- *     input: {
- *       question: "How do I create a service request?",
- *       answer: "You can create a service request by navigating to the Service Requests section and clicking the 'Create Request' button.",
- *       category: "getting-started",  // Options: general, getting-started, service-requests, quotes, payments, account
- *       order: 1
- *     }
- *   },
- *   context: {
- *     headers: {
- *       authorization: `Bearer ${token}`
- *     }
- *   }
- * });
- */
-
-/**
- * UPDATE CS FAQ - Frontend Usage:
- * 
- * const [updateFAQ, { data }] = useMutation(UPDATE_CS_FAQ, {
- *   refetchQueries: [{ query: GET_CS_CENTER_CONTENT }]
- * });
- * 
- * await updateFAQ({
- *   variables: {
- *     input: {
- *       faqId: "507f1f77bcf86cd799439011",
- *       question: "Updated question?",  // Optional
- *       answer: "Updated answer",        // Optional
- *       category: "general",             // Optional
- *       order: 2                         // Optional
- *     }
- *   },
- *   context: {
- *     headers: {
- *       authorization: `Bearer ${token}`
- *     }
- *   }
- * });
- */
-
-/**
- * DELETE CS FAQ - Frontend Usage:
- * 
- * const [deleteFAQ, { data }] = useMutation(DELETE_CS_FAQ, {
- *   refetchQueries: [{ query: GET_CS_CENTER_CONTENT }]
- * });
- * 
- * await deleteFAQ({
- *   variables: {
- *     faqId: "507f1f77bcf86cd799439011"
- *   },
- *   context: {
- *     headers: {
- *       authorization: `Bearer ${token}`
- *     }
- *   }
- * });
- */
